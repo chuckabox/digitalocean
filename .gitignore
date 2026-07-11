@@ -1,1 +1,4 @@
 .rocketride/
+
+__pycache__/
+*.pyc
