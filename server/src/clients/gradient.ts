@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { loadEnv } from '../config/env.js';
 import { AppError } from '../errors.js';
+import { logger } from '../logger.js';
 
 /**
  * Typed wrapper over DigitalOcean Gradient (OpenAI-compatible). The one place the
@@ -62,35 +63,98 @@ function buildMessages(opts: ChatOptions): SdkMessages {
   return msgs as SdkMessages;
 }
 
+/** Timing wrapper — never logs prompts, messages, or secrets. */
+async function withInferenceLog<T>(
+  op: string,
+  tier: ModelTier,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const model = modelFor(tier);
+  const started = Date.now();
+  try {
+    const result = await fn();
+    logger.info({ op, tier, model, ms: Date.now() - started }, 'Gradient ok');
+    return result;
+  } catch (err) {
+    logger.warn(
+      {
+        op,
+        tier,
+        model,
+        ms: Date.now() - started,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      'Gradient failed',
+    );
+    throw err;
+  }
+}
+
 /** Non-streaming completion — returns the assistant text. */
 export async function chat(opts: ChatOptions): Promise<string> {
-  const res = await client().chat.completions.create(
-    {
-      model: modelFor(opts.tier ?? 'fast'),
-      messages: buildMessages(opts),
-      max_completion_tokens: opts.maxTokens ?? 512,
-      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-    },
-    reqOpts(opts),
-  );
-  return res.choices[0]?.message?.content ?? '';
+  const tier = opts.tier ?? 'fast';
+  return withInferenceLog('chat', tier, async () => {
+    const res = await client().chat.completions.create(
+      {
+        model: modelFor(tier),
+        messages: buildMessages(opts),
+        max_completion_tokens: opts.maxTokens ?? 512,
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      },
+      reqOpts(opts),
+    );
+    return res.choices[0]?.message?.content ?? '';
+  });
 }
 
 /** Streaming completion — yields text deltas (drives the debrief SSE). */
 export async function* stream(opts: ChatOptions): AsyncGenerator<string> {
-  const s = await client().chat.completions.create(
-    {
-      model: modelFor(opts.tier ?? 'smart'),
-      messages: buildMessages(opts),
-      max_completion_tokens: opts.maxTokens ?? 1024,
-      stream: true,
-      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-    },
-    reqOpts(opts),
-  );
-  for await (const chunk of s) {
-    const delta = chunk.choices[0]?.delta?.content;
-    if (delta) yield delta;
+  const tier = opts.tier ?? 'smart';
+  const model = modelFor(tier);
+  const started = Date.now();
+  let s;
+  try {
+    s = await client().chat.completions.create(
+      {
+        model,
+        messages: buildMessages(opts),
+        max_completion_tokens: opts.maxTokens ?? 1024,
+        stream: true,
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      },
+      reqOpts(opts),
+    );
+  } catch (err) {
+    logger.warn(
+      {
+        op: 'stream',
+        tier,
+        model,
+        ms: Date.now() - started,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      'Gradient failed',
+    );
+    throw err;
+  }
+  try {
+    for await (const chunk of s) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) yield delta;
+    }
+    logger.info({ op: 'stream', tier, model, ms: Date.now() - started }, 'Gradient ok');
+  } catch (err) {
+    logger.warn(
+      {
+        op: 'stream',
+        tier,
+        model,
+        ms: Date.now() - started,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      'Gradient failed',
+    );
+    throw err;
   }
 }
 
@@ -133,39 +197,46 @@ export async function extractValidJson<T>(
 
 /** Forced tool-call → schema-validated object. Our reliable structured-output path. */
 export async function structured<T>(schema: z.ZodType<T>, opts: StructuredOptions): Promise<T> {
-  const model = modelFor(opts.tier ?? 'fast');
-  const baseMessages = buildMessages(opts);
-  const parameters = zodToJsonSchema(schema, { target: 'openApi3', $refStrategy: 'none' }) as Record<
-    string,
-    unknown
-  >;
-  delete parameters['$schema'];
+  const tier = opts.tier ?? 'fast';
+  return withInferenceLog('structured', tier, async () => {
+    const model = modelFor(tier);
+    const baseMessages = buildMessages(opts);
+    const parameters = zodToJsonSchema(schema, {
+      target: 'openApi3',
+      $refStrategy: 'none',
+    }) as Record<string, unknown>;
+    delete parameters['$schema'];
 
-  const attempt = async (correction: string | null): Promise<string> => {
-    const messages: SdkMessages = correction
-      ? [...baseMessages, { role: 'user', content: correction }]
-      : baseMessages;
-    const res = await client().chat.completions.create(
-      {
-        model,
-        messages,
-        tools: [
-          {
-            type: 'function',
-            function: { name: opts.toolName, description: opts.toolDescription, parameters },
-          },
-        ],
-        tool_choice: { type: 'function', function: { name: opts.toolName } },
-        max_completion_tokens: opts.maxTokens ?? 800,
-      },
-      reqOpts(opts),
-    );
-    const call = res.choices[0]?.message?.tool_calls?.[0];
-    if (!call || call.type !== 'function') throw AppError.upstream('Model returned no tool call');
-    return call.function.arguments;
-  };
+    const attempt = async (correction: string | null): Promise<string> => {
+      const messages: SdkMessages = correction
+        ? [...baseMessages, { role: 'user', content: correction }]
+        : baseMessages;
+      const res = await client().chat.completions.create(
+        {
+          model,
+          messages,
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: opts.toolName,
+                description: opts.toolDescription,
+                parameters,
+              },
+            },
+          ],
+          tool_choice: { type: 'function', function: { name: opts.toolName } },
+          max_completion_tokens: opts.maxTokens ?? 800,
+        },
+        reqOpts(opts),
+      );
+      const call = res.choices[0]?.message?.tool_calls?.[0];
+      if (!call || call.type !== 'function') throw AppError.upstream('Model returned no tool call');
+      return call.function.arguments;
+    };
 
-  return extractValidJson(schema, attempt, opts.maxAttempts ?? 2);
+    return extractValidJson(schema, attempt, opts.maxAttempts ?? 2);
+  });
 }
 
 export async function listModels(): Promise<string[]> {

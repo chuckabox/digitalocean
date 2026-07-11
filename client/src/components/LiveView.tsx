@@ -9,7 +9,15 @@ import { useSession } from '@/session/SessionContext';
 import { useSyntheticLoop } from '@/perception/useSyntheticLoop';
 import { useFrameIngest } from '@/perception/useFrameIngest';
 import { useMediaPipe } from '@/perception/useMediaPipe';
+import {
+  considerNudge,
+  createEngineState,
+  engineOptionsFromSearch,
+  type EngineState,
+} from '@/perception/eventEngine';
+import { useSpeech } from '@/perception/useSpeech';
 import { requestNudge } from '@/api/nudge';
+import type { NudgeResponse } from 'shared';
 
 function forceSynthetic() {
   return new URLSearchParams(window.location.search).has('synthetic');
@@ -57,6 +65,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     pushNudge,
     registerCleanup,
     startedAtMs,
+    appendTranscript,
   } = useSession();
 
   const [videoSource, setVideoSource] = useState<'none' | 'camera' | 'clip'>('none');
@@ -66,10 +75,16 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
   const [nudgeBusy, setNudgeBusy] = useState(false);
   const [toastId, setToastId] = useState<string | null>(null);
   const [nudgeError, setNudgeError] = useState<string | null>(null);
+  const [autoNudge, setAutoNudge] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const engineRef = useRef<EngineState>(createEngineState());
+  const engineOpts = useMemo(() => engineOptionsFromSearch(), []);
+  const nudgeInFlight = useRef(false);
+  const framesRef = useRef(frames);
+  framesRef.current = frames;
 
   const stopTracks = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -85,12 +100,49 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     return () => registerCleanup(null);
   }, [registerCleanup, stopTracks, clipUrl]);
 
+  useEffect(() => {
+    engineRef.current = createEngineState();
+  }, [sessionId]);
+
+  const fireNudge = useCallback(
+    async (confidence: NudgeResponse['confidence'], evidence: string[], t: number) => {
+      if (nudgeInFlight.current) return;
+      nudgeInFlight.current = true;
+      setNudgeBusy(true);
+      setNudgeError(null);
+      try {
+        const res = await requestNudge({
+          sessionId: sessionId ?? undefined,
+          context: context.trim() || undefined,
+          confidence,
+          evidence,
+          recentFrames: framesRef.current.slice(-5),
+        });
+        pushNudge(res, t);
+        setToastId(`${Date.now()}`);
+      } catch (err) {
+        setNudgeError(err instanceof Error ? err.message : 'Nudge failed');
+      } finally {
+        nudgeInFlight.current = false;
+        setNudgeBusy(false);
+      }
+    },
+    [sessionId, context, pushNudge],
+  );
+
   const onFrame = useCallback(
     (frame: SignalFrame) => {
       setLatest(frame);
       appendFrames([frame]);
+
+      if (!autoNudge) return;
+      const { state, candidate } = considerNudge(engineRef.current, frame, engineOpts);
+      engineRef.current = state;
+      if (candidate) {
+        void fireNudge(candidate.confidence, candidate.evidence, frame.t);
+      }
     },
-    [appendFrames],
+    [appendFrames, autoNudge, engineOpts, fireNudge],
   );
 
   const wantSynthetic =
@@ -105,13 +157,13 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     onFrame,
   });
 
-  // Synthetic fills in when camera is off, ?synthetic=1, or MediaPipe not ready/error
   const syntheticOn =
     Boolean(sessionId) &&
     (wantSynthetic || mpStatus === 'error' || (wantMediaPipe && mpStatus !== 'ready'));
 
   useSyntheticLoop(syntheticOn && (wantSynthetic || mpStatus !== 'ready'), onFrame);
   useFrameIngest(sessionId, frames);
+  useSpeech(Boolean(sessionId), startedAtMs, appendTranscript);
 
   const sourceLabel = forceSynthetic()
     ? 'synthetic (?synthetic=1)'
@@ -160,8 +212,6 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
 
   const handleNudge = async () => {
     if (!latest || nudgeBusy) return;
-    setNudgeBusy(true);
-    setNudgeError(null);
     const evidence = [
       `engagement ~${pct(latest.engagement)}%`,
       `attention ~${pct(latest.attention)}%`,
@@ -169,21 +219,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
         ? [`gazeAway ~${pct(latest.signals.gazeAway)}%`]
         : []),
     ].slice(0, 12);
-    try {
-      const res = await requestNudge({
-        sessionId: sessionId ?? undefined,
-        context: context.trim() || undefined,
-        confidence: latest.confidence ?? 'medium',
-        evidence,
-        recentFrames: frames.slice(-5),
-      });
-      pushNudge(res, latest.t);
-      setToastId(`${Date.now()}`);
-    } catch (err) {
-      setNudgeError(err instanceof Error ? err.message : 'Nudge failed');
-    } finally {
-      setNudgeBusy(false);
-    }
+    await fireNudge(latest.confidence ?? 'medium', evidence, latest.t);
   };
 
   const activeToast = useMemo(() => {
@@ -334,13 +370,22 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
                 >
                   {nudgeBusy ? 'Requesting…' : 'Request nudge'}
                 </Button>
+                <label className="flex items-center gap-2 text-[12px] text-ink-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoNudge}
+                    onChange={(e) => setAutoNudge(e.target.checked)}
+                    className="accent-[var(--color-accent)]"
+                  />
+                  Auto-nudge (event engine · 90s cooldown)
+                </label>
                 {nudgeError && (
                   <p className="text-xs text-alert" role="alert">
                     {nudgeError}
                   </p>
                 )}
                 <p className="font-mono text-[10px] text-ink-3">
-                  Auto event engine lands in Phase 4. Press B to simulate a dip.
+                  Tune with ?dipZ=-1.2&dipHold=8&cooldown=60 · press B to dip (synthetic)
                 </p>
               </div>
             </CardContent>

@@ -93,6 +93,7 @@ Cursor user MCP (`~/.cursor/mcp.json`, not in git) mirrors Claude Code for this 
 - **All:** two timed skit rehearsals; record a backup demo video.
 
 ## Known risks / loose ends
+- **AI triage kit (2026-07-11):** AppError + Gradient + canned-fallback logs; hermetic session/frame route tests; client `eventEngine` unit tests (`npm test` runs server + client).
 - Frontend not yet wired to the new backend.
 - Old deployed app defunct (its tables were dropped) — tear it down.
 - Web Speech + MediaPipe are Chrome-only — demo in real Chrome, controlled lighting.

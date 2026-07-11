@@ -5,7 +5,7 @@
     "dev": "npm run dev --workspace=client",
     "build:shared": "npm run build -w shared",
     "typecheck": "npm run build -w shared && npm run typecheck -w server",
-    "test": "npm run build -w shared && npm test -w server",
+    "test": "npm run build -w shared && npm test -w server && npm test -w client",
     "build": "npm run build -w shared && npm run build -w client && npm run build -w server"
   },
   "workspaces": [

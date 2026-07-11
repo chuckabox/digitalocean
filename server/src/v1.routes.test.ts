@@ -30,7 +30,9 @@ const phraseNudgeMock = vi.mocked(phraseNudge);
 const streamDebriefMock = vi.mocked(streamDebrief);
 const createSessionMock = vi.mocked(sessionsRepo.createSession);
 const getSessionMock = vi.mocked(sessionsRepo.getSession);
+const endSessionMock = vi.mocked(sessionsRepo.endSession);
 const insertFramesMock = vi.mocked(framesRepo.insertFrames);
+const getFramesMock = vi.mocked(framesRepo.getFrames);
 
 describe('/v1 routes (hermetic)', () => {
   const app = createApp();
@@ -106,5 +108,88 @@ describe('/v1 routes (hermetic)', () => {
     expect(res.text).toContain('"type":"delta"');
     expect(res.text).toContain('"type":"done"');
     expect(res.text).toContain('Hi ');
+  });
+
+  it('GET /v1/sessions/:id returns session', async () => {
+    getSessionMock.mockResolvedValueOnce({
+      id: sessionId,
+      createdAt: new Date('2026-07-12T00:00:00.000Z'),
+      endedAt: null,
+      context: 'friend catch-up',
+    });
+    const res = await request(app).get(`/v1/sessions/${sessionId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe(sessionId);
+    expect(res.body.createdAt).toBe('2026-07-12T00:00:00.000Z');
+  });
+
+  it('GET /v1/sessions/:id -> 404 when missing', async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const res = await request(app).get(`/v1/sessions/${sessionId}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('not_found');
+    expect(res.body.error.requestId).toBeTruthy();
+  });
+
+  it('POST /v1/sessions/:id/end ends session', async () => {
+    endSessionMock.mockResolvedValueOnce({
+      id: sessionId,
+      createdAt: new Date('2026-07-12T00:00:00.000Z'),
+      endedAt: new Date('2026-07-12T00:10:00.000Z'),
+      context: null,
+    });
+    const res = await request(app).post(`/v1/sessions/${sessionId}/end`);
+    expect(res.status).toBe(200);
+    expect(res.body.endedAt).toBe('2026-07-12T00:10:00.000Z');
+  });
+
+  it('POST /v1/sessions/:id/end -> 404 when missing', async () => {
+    endSessionMock.mockResolvedValueOnce(null);
+    const res = await request(app).post(`/v1/sessions/${sessionId}/end`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('not_found');
+  });
+
+  it('GET /v1/sessions/:id/frames returns frames', async () => {
+    getSessionMock.mockResolvedValueOnce({
+      id: sessionId,
+      createdAt: new Date(),
+      endedAt: null,
+      context: null,
+    });
+    getFramesMock.mockResolvedValueOnce([
+      {
+        id: 1,
+        sessionId,
+        t: 1.5,
+        engagement: 0.7,
+        valence: null,
+        attention: 0.6,
+        signals: null,
+        confidence: 'medium',
+        createdAt: new Date(),
+      },
+    ]);
+    const res = await request(app).get(`/v1/sessions/${sessionId}/frames`);
+    expect(res.status).toBe(200);
+    expect(res.body.frames).toHaveLength(1);
+    expect(res.body.frames[0].t).toBe(1.5);
+    expect(res.body.frames[0].engagement).toBe(0.7);
+  });
+
+  it('GET /v1/sessions/:id/frames -> 404 when session missing', async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const res = await request(app).get(`/v1/sessions/${sessionId}/frames`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('not_found');
+  });
+
+  it('POST /v1/frames -> 404 when session missing', async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const res = await request(app)
+      .post('/v1/frames')
+      .send({ sessionId, frames: [{ t: 0, engagement: 0.5 }] });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('not_found');
   });
 });

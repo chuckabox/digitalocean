@@ -1,49 +1,240 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+} from 'recharts';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { useSession } from '@/session/SessionContext';
+import { streamDebrief } from '@/api/debrief';
+import { ingestFrames } from '@/api/frames';
 
-/** Minimal debrief shell — Phase 6 replaces with SSE + timeline. */
+function formatTime(t: number) {
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export default function DebriefView() {
   const { sessionId, context, frames, nudges, transcript, reset, setPhase } = useSession();
+  const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState(true);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    let cancelled = false;
+
+    async function run() {
+      if (sessionId && frames.length > 0) {
+        try {
+          // best-effort flush leftover frames
+          for (let i = 0; i < frames.length; i += 120) {
+            await ingestFrames({
+              sessionId,
+              frames: frames.slice(i, i + 120),
+            });
+          }
+        } catch (err) {
+          console.warn('flush frames', err);
+        }
+      }
+
+      try {
+        await streamDebrief(
+          {
+            sessionId: sessionId ?? undefined,
+            context: context.trim() || undefined,
+            transcript: transcript.length ? transcript : undefined,
+            frames: frames.length ? frames : undefined,
+            tier: 'smart',
+          },
+          {
+            onDelta: (chunk) => {
+              if (!cancelled) setText((prev) => prev + chunk);
+            },
+            onDone: () => {
+              if (!cancelled) {
+                setDone(true);
+                setStreaming(false);
+              }
+            },
+            onError: (message) => {
+              if (!cancelled) {
+                setError(message);
+                setStreaming(false);
+              }
+            },
+          },
+          ac.signal,
+        );
+        if (!cancelled) {
+          setDone(true);
+          setStreaming(false);
+        }
+      } catch (err) {
+        if (!cancelled && !(err instanceof DOMException && err.name === 'AbortError')) {
+          setError(err instanceof Error ? err.message : 'Debrief failed');
+          setStreaming(false);
+        }
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+    // intentionally once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const chartData = useMemo(
+    () =>
+      frames.map((f) => ({
+        t: f.t,
+        engagement: Math.round((f.engagement ?? 0) * 100),
+        attention: Math.round((f.attention ?? 0) * 100),
+      })),
+    [frames],
+  );
+
+  const meanEng =
+    frames.length === 0
+      ? 0
+      : frames.reduce((s, f) => s + (f.engagement ?? 0), 0) / frames.length;
 
   return (
-    <div className="pt-6 pb-16 flex flex-col gap-8 max-w-2xl">
+    <div className="pt-4 pb-16 flex flex-col gap-10">
       <div>
         <p className="font-mono text-[11px] tracking-[0.08em] uppercase text-ink-3 mb-2">
           Debrief
         </p>
-        <h1 className="text-[28px] font-medium tracking-tight text-ink mb-3">
-          Session ended
+        <h1 className="text-[28px] md:text-[34px] font-medium tracking-tight text-ink mb-2">
+          The conversation, annotated
         </h1>
-        <p className="text-[15px] text-ink-2 leading-relaxed">
-          Streaming AI debrief arrives in a later phase. Your session is saved on the
-          server; frames and transcript are held in memory for the next step.
+        <p className="text-[15px] text-ink-2 max-w-[52ch]">
+          Engagement over time with nudge markers. AI summary streams from Claude on
+          DigitalOcean Gradient.
         </p>
       </div>
 
-      <dl className="grid grid-cols-2 gap-4 text-sm border border-rule p-5 bg-paper-2">
-        <div>
-          <dt className="text-ink-3 text-xs mb-1">Session</dt>
-          <dd className="font-mono text-[12px] break-all text-ink">{sessionId ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-3 text-xs mb-1">Frames</dt>
-          <dd className="text-ink">{frames.length}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-3 text-xs mb-1">Nudges</dt>
-          <dd className="text-ink">{nudges.length}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-3 text-xs mb-1">Transcript turns</dt>
-          <dd className="text-ink">{transcript.length}</dd>
-        </div>
-        {context.trim() && (
-          <div className="col-span-2">
-            <dt className="text-ink-3 text-xs mb-1">Context</dt>
-            <dd className="text-ink">{context}</dd>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 items-start">
+        <div className="flex flex-col gap-4">
+          <div className="h-64 w-full border border-rule bg-paper-2 p-3">
+            {chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-ink-3">
+                No frames recorded for this session.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#DAD5C8" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="t"
+                    tickFormatter={formatTime}
+                    stroke="#A39D8E"
+                    fontSize={11}
+                  />
+                  <YAxis domain={[0, 100]} stroke="#A39D8E" fontSize={11} width={32} />
+                  <Tooltip
+                    formatter={(value) => [`${value}%`, 'engagement']}
+                    labelFormatter={(label) => formatTime(Number(label))}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="engagement"
+                    stroke="#2F4E87"
+                    fill="#E4E9F4"
+                    strokeWidth={1.5}
+                    isAnimationActive={false}
+                  />
+                  {nudges.map((n) => (
+                    <ReferenceLine
+                      key={n.id}
+                      x={n.t}
+                      stroke="#B04A3C"
+                      strokeDasharray="4 4"
+                      label={{ value: 'nudge', fill: '#B04A3C', fontSize: 10 }}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-        )}
-      </dl>
+
+          <dl className="grid grid-cols-3 gap-3 text-sm">
+            <div className="border border-rule p-3">
+              <dt className="text-ink-3 text-xs mb-1">Mean engagement</dt>
+              <dd className="font-mono text-ink">{Math.round(meanEng * 100)}%</dd>
+            </div>
+            <div className="border border-rule p-3">
+              <dt className="text-ink-3 text-xs mb-1">Frames</dt>
+              <dd className="font-mono text-ink">{frames.length}</dd>
+            </div>
+            <div className="border border-rule p-3">
+              <dt className="text-ink-3 text-xs mb-1">Nudges</dt>
+              <dd className="font-mono text-ink">{nudges.length}</dd>
+            </div>
+          </dl>
+
+          {nudges.length > 0 && (
+            <ul className="flex flex-col border border-rule divide-y divide-rule">
+              {nudges.map((n) => (
+                <li key={n.id} className="px-3 py-2.5 flex gap-3 items-start">
+                  <span className="font-mono text-xs text-ink-3 shrink-0">{formatTime(n.t)}</span>
+                  <span className="text-[13px] text-ink flex-1">{n.text}</span>
+                  <Badge variant="accent" size="sm">
+                    {n.confidence}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-[16px] font-medium text-ink">AI debrief</h2>
+            <Badge variant={streaming ? 'accent' : done ? 'positive' : 'alert'} size="sm">
+              {streaming ? 'streaming' : done ? 'complete' : 'error'}
+            </Badge>
+          </div>
+          <p className="font-mono text-[10px] tracking-[0.04em] text-ink-3 uppercase">
+            Generated by Claude on DigitalOcean Gradient
+          </p>
+          <div className="min-h-[220px] border border-rule bg-paper p-4 text-[15px] leading-relaxed text-ink font-light whitespace-pre-wrap">
+            {text || (streaming ? '…' : 'No debrief text.')}
+            {streaming && <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 animate-pulse" />}
+          </div>
+          {error && (
+            <p className="text-sm text-alert" role="alert">
+              {error}
+            </p>
+          )}
+          {transcript.length > 0 && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-ink-2">
+                Transcript ({transcript.length} turns)
+              </summary>
+              <ul className="mt-2 flex flex-col gap-1.5 max-h-40 overflow-auto">
+                {transcript.map((turn, i) => (
+                  <li key={`${turn.t}-${i}`} className="font-mono text-[11px] text-ink-3">
+                    [{formatTime(turn.t)}] {turn.speaker}: {turn.text}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      </div>
 
       <div className="flex gap-3">
         <Button variant="primary" onClick={() => setPhase('consent')}>
