@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import Header from './components/Header'
-import LiveView from './components/LiveView'
-import StatsView from './components/StatsView'
-import TimelineView from './components/TimelineView'
-import LandingPage from './components/LandingPage'
-
-type View = 'home' | 'live' | 'stats' | 'timeline'
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import Header from './components/Header';
+import LiveView from './components/LiveView';
+import LandingPage from './components/LandingPage';
+import ConsentView from './components/ConsentView';
+import DebriefView from './components/DebriefView';
+import StatsView from './components/StatsView';
+import TimelineView from './components/TimelineView';
+import { SessionProvider, useSession } from './session/SessionContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 }
-}
+  exit: { opacity: 0, y: -6 },
+};
 
 const MODAL_CONTENT = {
   privacy: {
@@ -23,64 +24,45 @@ const MODAL_CONTENT = {
     title: 'Terms of Service',
     content: 'Wavelength is an exploratory tool for personal insight, not medical diagnosis or lie detection. By using Wavelength, you explicitly agree to obtain active two-party consent before utilizing the platform in any live conversations.'
   }
-}
+};
 
-const getInitialView = (): View => {
-  if (typeof window !== 'undefined') {
-    const hash = window.location.hash.slice(1) as View
-    if (['home', 'live', 'stats', 'timeline'].includes(hash)) {
-      return hash
-    }
-  }
-  return 'home'
-}
-
-export default function App() {
-  const [view, setView] = useState<View>(getInitialView)
-  const [modal, setModal] = useState<'privacy' | 'terms' | null>(null)
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const hash = window.location.hash.slice(1) as View
-      if (['home', 'live', 'stats', 'timeline'].includes(hash)) {
-        setView(hash)
-      } else {
-        setView('home')
-      }
-    }
-
-    window.addEventListener('popstate', handlePopState)
-    handlePopState()
-
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
-
-  useEffect(() => {
-    if (view !== 'home') {
-      window.history.pushState(null, '', `#${view}`)
-    } else {
-      window.history.pushState(null, '', window.location.pathname)
-    }
-  }, [view])
+function AppShell() {
+  const { phase, setPhase, endAndDebrief, kill } = useSession();
+  const [modal, setModal] = useState<'privacy' | 'terms' | null>(null);
 
   return (
     <div className="relative max-w-[1160px] mx-auto px-7 pb-14">
-      <Header currentView={view} onViewChange={setView} />
+      <Header
+        phase={phase}
+        onBrandClick={() => {
+          if (phase === 'live') kill();
+          else setPhase('home');
+        }}
+        onEndSession={() => void endAndDebrief()}
+        onKill={kill}
+        onPhaseChange={setPhase}
+      />
+      
       <AnimatePresence mode="wait">
         <motion.div
-          key={view}
+          key={phase}
           variants={pageVariants}
           initial="initial"
           animate="animate"
           exit="exit"
           transition={{ duration: 0.2, ease: 'easeOut' }}
         >
-          {view === 'home' && <LandingPage onEnterApp={() => setView('live')} />}
-          {view === 'live' && <LiveView onGoToTimeline={() => setView('timeline')} />}
-          {view === 'stats' && <StatsView />}
-          {view === 'timeline' && <TimelineView />}
+          {phase === 'home' && <LandingPage onEnterApp={() => setPhase('consent')} />}
+          {phase === 'consent' && <ConsentView />}
+          {phase === 'live' && (
+            <LiveView onGoToTimeline={() => void endAndDebrief()} />
+          )}
+          {phase === 'debrief' && <DebriefView />}
+          {phase === 'timeline' && <TimelineView />}
+          {phase === 'stats' && <StatsView />}
         </motion.div>
       </AnimatePresence>
+
       <footer className="mt-12 pt-12 pb-8 border-t border-rule">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-12 items-start mb-8">
           <div className="text-left">
@@ -134,5 +116,13 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
+}
+
+export default function App() {
+  return (
+    <SessionProvider>
+      <AppShell />
+    </SessionProvider>
+  );
 }

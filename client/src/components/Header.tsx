@@ -6,9 +6,15 @@ interface HeaderProps {
   onBrandClick: () => void;
   onEndSession: () => void;
   onKill: () => void;
+  onPhaseChange?: (phase: AppPhase) => void;
 }
 
-export default function Header({ phase, onBrandClick, onEndSession, onKill }: HeaderProps) {
+const VIEWS: { key: AppPhase; label: string }[] = [
+  { key: 'stats', label: 'Stats' },
+  { key: 'timeline', label: 'Timeline' },
+];
+
+export default function Header({ phase, onBrandClick, onEndSession, onKill, onPhaseChange }: HeaderProps) {
   return (
     <>
       <header className="flex items-baseline justify-between gap-4 pt-[26px]">
@@ -19,6 +25,35 @@ export default function Header({ phase, onBrandClick, onEndSession, onKill }: He
         >
           wavelength
         </button>
+
+        {phase !== 'live' && phase !== 'consent' && onPhaseChange && (
+          <nav className="flex gap-[26px] ml-12 mr-auto" aria-label="Main">
+            <button
+              onClick={() => onPhaseChange('home')}
+              className={`font-sans text-[13px] tracking-[0.02em] pb-2 pt-0.5 border-none bg-transparent cursor-pointer ${
+                phase === 'home' || phase === 'debrief'
+                  ? 'text-ink font-semibold shadow-[inset_0_-2px_0_0_var(--color-accent)]'
+                  : 'text-ink-2 font-normal hover:text-ink'
+              } focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
+            >
+              Session
+            </button>
+            {VIEWS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => onPhaseChange(key)}
+                className={`font-sans text-[13px] tracking-[0.02em] pb-2 pt-0.5 border-none bg-transparent cursor-pointer ${
+                  phase === key
+                    ? 'text-ink font-semibold shadow-[inset_0_-2px_0_0_var(--color-accent)]'
+                    : 'text-ink-2 font-normal hover:text-ink'
+                } focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
+
         <div className="flex items-center gap-3">
           {phase === 'live' && (
             <>
