@@ -79,8 +79,8 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
               desc: 'Analyzed locally. Video and audio are never saved or transmitted to the cloud.',
             },
             {
-              title: 'Mutual Consent',
-              desc: 'Built as a two-way translator. Wavelength only operates when both sides agree.',
+              title: 'Two-Party Consent',
+              desc: 'Complies with strict two-party consent laws like California. Operates only when both sides explicitly agree.',
             }
           ].map((feature, i) => (
             <motion.div
