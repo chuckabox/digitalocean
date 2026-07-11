@@ -15,14 +15,29 @@ const pageVariants = {
 }
 
 export default function App() {
-  const [view, setView] = useState<View>(() => {
-    const hash = window.location.hash.slice(1)
-    return ['home', 'live', 'stats', 'timeline'].includes(hash) ? (hash as View) : 'home'
-  })
+  const [view, setView] = useState<View>('home')
 
   useEffect(() => {
-    if (window.location.hash !== '#' + view) {
-      history.replaceState(null, '', '#' + view)
+    const handlePopState = () => {
+      const hash = window.location.hash.slice(1) as View
+      if (['home', 'live', 'stats', 'timeline'].includes(hash)) {
+        setView(hash)
+      } else {
+        setView('home')
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    handlePopState()
+
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
+    if (view !== 'home') {
+      window.history.pushState(null, '', `#${view}`)
+    } else {
+      window.history.pushState(null, '', window.location.pathname)
     }
   }, [view])
 
@@ -52,9 +67,9 @@ export default function App() {
               A consented social co-pilot for one-on-one conversations.
             </p>
           </div>
-          <div className="text-left flex flex-col sm:flex-row gap-6 md:gap-12">
-            <a href="#" className="text-sm font-medium text-ink-2 hover:text-accent transition-colors">Privacy FAQ</a>
-            <a href="#" className="text-sm font-medium text-ink-2 hover:text-accent transition-colors">Terms of Service</a>
+          <div className="text-left flex flex-col gap-3">
+            <a href="#" className="text-[13px] font-medium text-ink-2 hover:text-accent transition-colors">Privacy FAQ</a>
+            <a href="#" className="text-[13px] font-medium text-ink-2 hover:text-accent transition-colors">Terms of Service</a>
           </div>
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center text-[13px] text-ink-3">
