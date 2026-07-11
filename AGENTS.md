@@ -56,6 +56,11 @@ the LLM and Postgres live behind the server. Full phased plan (stack, gates, spi
 > The old `debrief/` Python backend was a throwaway test and has been removed. We build
 > the real backend from first principles — do not reference its contract.
 
+**Build status (2026-07-12):** Phase 0 (foundation + DO spike) ✅ and Phase 1 (data layer:
+Drizzle `sessions`/`frames` migrated to Managed Postgres, typed repos, integration tests) ✅
+done. Next: Phase 2 (Gradient client) → Phase 3 (`/v1` endpoints) → Phase 4 (deploy). Team
+status: [STATUS.md](./STATUS.md).
+
 ```
 ┌── Browser · React + MediaPipe (raw video/audio never leaves) ───────┐
 │  getUserMedia → MediaPipe (~12Hz) → derived signals → 1Hz frames     │
