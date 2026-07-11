@@ -1,0 +1,21 @@
+{
+  "conversation_id": "sample-mixer-01",
+  "user_speaker": "S1",
+  "turns": [
+    { "speaker": "S1", "t": "00:03", "text": "Hi, is this seat taken? I'm Sam." },
+    { "speaker": "S2", "t": "00:06", "text": "Oh, go for it. Alex. You here for the hackathon or the talks?" },
+    { "speaker": "S1", "t": "00:09", "text": "The hackathon. I've done eleven of these. I usually do the backend, sometimes the whole stack. Last one I built a scheduling tool, the one before that a chatbot, the one before that a thing for parsing PDFs, which was actually harder than it sounds because the layouts are inconsistent and..." },
+    { "speaker": "S2", "t": "00:41", "text": "Ha, nice. So a lot of experience then." },
+    { "speaker": "S1", "t": "00:44", "text": "Yeah. I should say, I'm autistic, so I might come across as a bit blunt." },
+    { "speaker": "S2", "t": "00:49", "text": "..." },
+    { "speaker": "S2", "t": "00:53", "text": "Oh. Okay. Cool." },
+    { "speaker": "S1", "t": "00:55", "text": "What's the async-invoke endpoint's polling interval, do you know?" },
+    { "speaker": "S2", "t": "01:00", "text": "Uh, not off the top of my head. I might grab a coffee actually, good luck with it." }
+  ],
+  "visual_signals": [
+    { "t": "00:10", "observation": "partner (S2) turned toward the speaker, relaxed posture, steady eye contact" },
+    { "t": "00:30", "observation": "partner's smile fading, glancing out toward the room" },
+    { "t": "00:47", "observation": "partner leaned back slightly and broke eye contact" },
+    { "t": "00:58", "observation": "partner shifted weight, angled away, half-standing" }
+  ]
+}

@@ -1,0 +1,95 @@
+[
+  {
+    "conversation_id": "practice-01",
+    "stored_at": 1783754674,
+    "metrics": {
+      "user_talk_ratio": 0.81,
+      "questions_asked_by_user": 0,
+      "questions_asked_by_other": 1,
+      "longest_user_monologue_seconds": 55
+    },
+    "pattern_labels": [
+      "reciprocal questions",
+      "talk-time balance"
+    ],
+    "moment_gists": [
+      {
+        "t": "00:09",
+        "why": "Early conversation is usually a back-and-forth to find common ground. Trading turns roughly evenly signals interest in them, not just your topic.",
+        "source": "both"
+      },
+      {
+        "t": "00:44",
+        "why": "Personal disclosures usually land better once there is a little rapport, and they land warmer framed as a neutral fact than as a warning about yourself.",
+        "source": "both"
+      },
+      {
+        "t": "00:55",
+        "why": "A tiny acknowledgement often resets a stalled moment before you move on.",
+        "source": "audio"
+      }
+    ]
+  },
+  {
+    "conversation_id": "practice-02",
+    "stored_at": 1783754674,
+    "metrics": {
+      "user_talk_ratio": 0.74,
+      "questions_asked_by_user": 1,
+      "questions_asked_by_other": 1,
+      "longest_user_monologue_seconds": 41
+    },
+    "pattern_labels": [
+      "reciprocal questions",
+      "talk-time balance"
+    ],
+    "moment_gists": [
+      {
+        "t": "00:09",
+        "why": "Early conversation is usually a back-and-forth to find common ground. Trading turns roughly evenly signals interest in them, not just your topic.",
+        "source": "both"
+      },
+      {
+        "t": "00:44",
+        "why": "Personal disclosures usually land better once there is a little rapport, and they land warmer framed as a neutral fact than as a warning about yourself.",
+        "source": "both"
+      },
+      {
+        "t": "00:55",
+        "why": "A tiny acknowledgement often resets a stalled moment before you move on.",
+        "source": "audio"
+      }
+    ]
+  },
+  {
+    "conversation_id": "sample-mixer-01",
+    "stored_at": 1783754674,
+    "metrics": {
+      "user_talk_ratio": 0.66,
+      "questions_asked_by_user": 2,
+      "questions_asked_by_other": 1,
+      "longest_user_monologue_seconds": 32
+    },
+    "pattern_labels": [
+      "reciprocal questions",
+      "talk-time balance"
+    ],
+    "moment_gists": [
+      {
+        "t": "00:09",
+        "why": "Early conversation is usually a back-and-forth to find common ground. Trading turns roughly evenly signals interest in them, not just your topic.",
+        "source": "both"
+      },
+      {
+        "t": "00:44",
+        "why": "Personal disclosures usually land better once there is a little rapport, and they land warmer framed as a neutral fact than as a warning about yourself.",
+        "source": "both"
+      },
+      {
+        "t": "00:55",
+        "why": "A tiny acknowledgement often resets a stalled moment before you move on.",
+        "source": "audio"
+      }
+    ]
+  }
+]

@@ -1,8 +1,9 @@
-# Pitch — Conversation Debrief for Neurodivergent Networking (working title)
+# Wavelength — Conversation Debrief for Neurodivergent Networking
 
 > Living context doc for our final idea. Everything the team needs for the build and the
-> 2-minute judge pitch goes here. Status: **idea locked. Mode locked to post-conversation
-> debrief. Scoping the capture + v1 modality before architecture.**
+> 2-minute judge pitch goes here. Status: **name locked (Wavelength), mode locked
+> (post-conversation debrief; live nudges = roadmap), modality locked (audio core + video
+> supporting layer). Branch-per-person workflow, merge before demo. See ALIGNMENT.md.**
 
 ## One-liner
 A conversation coach for neurodivergent people who want to get better at networking. You have a

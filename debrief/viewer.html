@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wavelength — Debrief</title>
+<style>
+  /* Reference viewer + demo fallback (rung 3). Peter's product UI supersedes this.
+     Calm, low-stimulation styling on purpose: soft contrast, generous spacing, no motion. */
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --ink: #2b3440; --sub: #66707d;
+    --line: #e3e7ec; --accent: #3a6ea5; --good: #2e7d5b; --warn: #a8642a;
+    --audio: #5b7fa6; --video: #7a5ba6; --both: #a65b8a;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Lexend", "Segoe UI", system-ui, sans-serif; background: var(--bg);
+         color: var(--ink); margin: 0; line-height: 1.55; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 .25rem; }
+  h1 .wave { color: var(--accent); }
+  .sub { color: var(--sub); font-size: .9rem; margin-bottom: 1.5rem; }
+  .bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.5rem; }
+  input, select, button { font: inherit; padding: .45rem .7rem; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--card); color: var(--ink); }
+  input { flex: 1; min-width: 220px; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+  .summary { font-size: 1.02rem; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: .8rem 1rem; }
+  .tile b { display: block; font-size: 1.35rem; font-weight: 600; }
+  .tile span { color: var(--sub); font-size: .8rem; }
+  .moment { border-left: 4px solid var(--line); }
+  .mhead { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; margin-bottom: .4rem; }
+  .t { font-weight: 600; color: var(--accent); }
+  .badge { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; color: #fff; }
+  .badge.audio { background: var(--audio); } .badge.video { background: var(--video); }
+  .badge.both { background: var(--both); }
+  .conf { font-size: .72rem; color: var(--sub); border: 1px solid var(--line);
+          padding: .1rem .5rem; border-radius: 999px; }
+  .quote { color: var(--sub); font-style: italic; margin: .2rem 0 .5rem; }
+  .try { background: #eef4ee; border-radius: 8px; padding: .6rem .8rem; margin-top: .55rem; }
+  .try b { color: var(--good); }
+  .plabel { font-weight: 600; }
+  .recurring { color: var(--warn); font-size: .78rem; font-weight: 600; margin-left: .4rem; }
+  ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+  h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--sub); margin: 1.6rem 0 .6rem; font-weight: 600; }
+  #status { color: var(--sub); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="wave">Wavelength</span> — Conversation Debrief</h1>
+  <div class="sub">What happened, why it landed the way it did, and what to try next time.</div>
+
+  <div class="bar">
+    <input id="api" placeholder="API base URL" value="https://wavelength-brain-37j5z.ondigitalocean.app">
+    <select id="model">
+      <option value="anthropic-claude-haiku-4.5">Claude Haiku 4.5 (fast)</option>
+      <option value="anthropic-claude-4.6-sonnet">Claude Sonnet 4.6 (sharper)</option>
+    </select>
+    <button class="primary" id="analyze">Analyze sample conversation</button>
+    <button id="offline">Load offline fixture</button>
+    <button id="speak">🔊 Read aloud</button>
+    <button id="paste-toggle">Analyze my own…</button>
+    <span id="status"></span>
+  </div>
+
+  <div id="paste-area" style="display:none; margin-bottom:1rem">
+    <textarea id="paste-json" placeholder='Paste a transcript JSON from recorder.html (needs "user_speaker" and "turns")'
+      style="width:100%; height:8rem; font-family:monospace; font-size:.8rem; padding:.6rem;
+             border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink)"></textarea>
+    <button class="primary" id="paste-analyze" style="margin-top:.4rem">Analyze pasted transcript</button>
+  </div>
+
+  <div id="view"></div>
+</div>
+
+<script>
+// ---- embedded fixtures (offline / rung-3 fallback; kept in sync with debrief/sample-*.json) ----
+const SAMPLE_TRANSCRIPT = {
+  conversation_id: "sample-mixer-01",
+  user_speaker: "S1",
+  turns: [
+    { speaker: "S1", t: "00:03", text: "Hi, is this seat taken? I'm Sam." },
+    { speaker: "S2", t: "00:06", text: "Oh, go for it. Alex. You here for the hackathon or the talks?" },
+    { speaker: "S1", t: "00:09", text: "The hackathon. I've done eleven of these. I usually do the backend, sometimes the whole stack. Last one I built a scheduling tool, the one before that a chatbot, the one before that a thing for parsing PDFs, which was actually harder than it sounds because the layouts are inconsistent and..." },
+    { speaker: "S2", t: "00:41", text: "Ha, nice. So a lot of experience then." },
+    { speaker: "S1", t: "00:44", text: "Yeah. I should say, I'm autistic, so I might come across as a bit blunt." },
+    { speaker: "S2", t: "00:49", text: "..." },
+    { speaker: "S2", t: "00:53", text: "Oh. Okay. Cool." },
+    { speaker: "S1", t: "00:55", text: "What's the async-invoke endpoint's polling interval, do you know?" },
+    { speaker: "S2", t: "01:00", text: "Uh, not off the top of my head. I might grab a coffee actually, good luck with it." }
+  ],
+  visual_signals: [
+    { t: "00:10", observation: "partner (S2) turned toward the speaker, relaxed posture, steady eye contact" },
+    { t: "00:30", observation: "partner's smile fading, glancing out toward the room" },
+    { t: "00:47", observation: "partner leaned back slightly and broke eye contact" },
+    { t: "00:58", observation: "partner shifted weight, angled away, half-standing" }
+  ]
+};
+const OFFLINE_DEBRIEF = null; // filled below by fetch fallback or embed script if regenerated
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+
+let lastDebrief = null; // for Read aloud
+
+function speak() {
+  if (!lastDebrief) return;
+  const synth = window.speechSynthesis;
+  if (synth.speaking) { synth.cancel(); return; } // toggle off
+  const text = [
+    "Here's your debrief.", lastDebrief.summary,
+    "What worked:", ...(lastDebrief.what_worked || []),
+    "For next time:", ...(lastDebrief.next_time || []),
+  ].join(" ");
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95; u.pitch = 1.0; // calm, unhurried
+  const v = synth.getVoices().find(v => /female|natural|samantha|zira|aria/i.test(v.name));
+  if (v) u.voice = v;
+  synth.speak(u);
+}
+
+function render(d) {
+  lastDebrief = d;
+  const m = d.metrics || {};
+  const tiles = [
+    [Math.round((m.user_talk_ratio ?? 0) * 100) + "%", "your share of talking"],
+    [m.questions_asked_by_user ?? "—", "questions you asked"],
+    [m.questions_asked_by_other ?? "—", "questions they asked"],
+    [(m.longest_user_monologue_seconds ?? "—") + "s", "longest monologue"],
+  ];
+  let h = `<div class="card summary">${esc(d.summary)}</div>`;
+  h += `<div class="tiles">` + tiles.map(([v, l]) => `<div class="tile"><b>${esc(String(v))}</b><span>${esc(l)}</span></div>`).join("") + `</div>`;
+  h += `<h2>Moments</h2>`;
+  for (const mo of d.moments || []) {
+    const src = mo.source || "audio";
+    h += `<div class="card moment">
+      <div class="mhead"><span class="t">${esc(mo.t)}</span>
+        <span class="badge ${esc(src)}">${esc(src)}</span>
+        <span class="conf">confidence: ${esc(mo.confidence)}</span></div>
+      <div class="quote">"${esc(mo.quote)}"</div>
+      <div>${esc(mo.observation)}</div>
+      <div style="color:var(--sub); margin-top:.35rem">${esc(mo.interpretation)}</div>
+      <div style="margin-top:.35rem; font-size:.9rem"><b>Why it matters:</b> ${esc(mo.why_it_matters)}</div>
+      <div class="try"><b>Try instead:</b> ${esc(mo.try_instead)}</div>
+    </div>`;
+  }
+  h += `<h2>Patterns</h2>`;
+  for (const p of d.patterns || []) {
+    h += `<div class="card"><span class="plabel">${esc(p.label)}</span>${p.recurring ? '<span class="recurring">recurring — has come up before</span>' : ""}
+      <div>${esc(p.finding)}</div>
+      <div style="color:var(--sub); margin-top:.3rem">${esc(p.coaching)}</div></div>`;
+  }
+  h += `<h2>What worked</h2><div class="card"><ul>` + (d.what_worked || []).map(x => `<li>${esc(x)}</li>`).join("") + `</ul></div>`;
+  h += `<h2>Next time</h2><div class="card"><ul>` + (d.next_time || []).map(x => `<li>${esc(x)}</li>`).join("") + `</ul></div>`;
+  document.getElementById("view").innerHTML = h;
+}
+
+async function analyze(transcript = SAMPLE_TRANSCRIPT) {
+  const btn = document.getElementById("analyze"), status = document.getElementById("status");
+  const base = document.getElementById("api").value.replace(/\/$/, "");
+  const model = document.getElementById("model").value;
+  btn.disabled = true;
+  status.textContent = "analyzing (~20-35s, real inference on DigitalOcean)…";
+  const t0 = Date.now();
+  try {
+    const r = await fetch(`${base}/api/debrief?model=${encodeURIComponent(model)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(transcript),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    render(d);
+    status.textContent = `done in ${((Date.now() - t0) / 1000).toFixed(1)}s — ${model}`;
+  } catch (e) {
+    status.textContent = "error: " + e.message + (transcript === SAMPLE_TRANSCRIPT ? " — falling back to offline fixture" : "");
+    if (transcript === SAMPLE_TRANSCRIPT) loadOffline();
+  } finally { btn.disabled = false; }
+}
+
+function analyzePasted() {
+  let t;
+  try { t = JSON.parse(document.getElementById("paste-json").value); }
+  catch { document.getElementById("status").textContent = "that isn't valid JSON — export it from recorder.html"; return; }
+  if (!t.turns || !t.user_speaker) {
+    document.getElementById("status").textContent = 'transcript needs "turns" and "user_speaker"'; return;
+  }
+  analyze(t);
+}
+
+async function loadOffline() {
+  // Works when served next to sample-debrief.json; file:// users: paste JSON via console render()
+  try {
+    const r = await fetch("sample-debrief.json");
+    render(await r.json());
+    document.getElementById("status").textContent = "offline fixture loaded";
+  } catch {
+    document.getElementById("status").textContent = "offline fixture unavailable over file:// — run any static server in debrief/";
+  }
+}
+
+document.getElementById("analyze").onclick = () => analyze();
+document.getElementById("offline").onclick = loadOffline;
+document.getElementById("speak").onclick = speak;
+document.getElementById("paste-toggle").onclick = () => {
+  const a = document.getElementById("paste-area");
+  a.style.display = a.style.display === "none" ? "block" : "none";
+};
+document.getElementById("paste-analyze").onclick = analyzePasted;
+loadOffline();
+</script>
+</body>
+</html>

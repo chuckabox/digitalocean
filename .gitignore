@@ -1,1 +1,5 @@
 .rocketride/
+
+__pycache__/
+*.pyc
+debrief/wavelength-memory.json

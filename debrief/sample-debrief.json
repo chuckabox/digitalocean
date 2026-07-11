@@ -1,0 +1,64 @@
+{
+  "summary": "You came across as knowledgeable and genuine, and being open about being autistic is completely fine. The conversation went quiet mainly because of timing and balance: a long stretch about your projects with no question back, then the disclosure very early before you two had any rapport. Small changes to when and how, not whether, would help a lot.",
+  "metrics": {
+    "user_talk_ratio": 0.66,
+    "questions_asked_by_user": 2,
+    "questions_asked_by_other": 1,
+    "longest_user_monologue_seconds": 32
+  },
+  "moments": [
+    {
+      "t": "00:09",
+      "quote": "I've done eleven of these. I usually do the backend...",
+      "observation": "About 32 seconds of your project history with no question back to Alex. Partway through, Alex's smile faded and they started glancing out toward the room.",
+      "interpretation": "Long monologues early on can make the other person feel like an audience rather than a participant, which often makes them disengage. The visual drift partway through matches that.",
+      "confidence": "medium",
+      "source": "both",
+      "why_it_matters": "Early conversation is usually a back-and-forth to find common ground. Trading turns roughly evenly signals interest in them, not just your topic.",
+      "try_instead": "Give one line, then hand it back: 'I mostly do backend. What are you hoping to build here?'"
+    },
+    {
+      "t": "00:44",
+      "quote": "I'm autistic, so I might come across as a bit blunt.",
+      "observation": "You disclosed being autistic about 40 seconds in, framed as a warning, before much rapport was built. Alex went quiet for a few seconds, leaned back slightly, and broke eye contact.",
+      "interpretation": "The disclosure itself is fine. Very early, to a stranger, framed as a caution, it can leave the other person unsure how to respond, which often reads as an awkward pause. That is about their uncertainty, not you doing something wrong.",
+      "confidence": "medium",
+      "source": "both",
+      "why_it_matters": "Personal disclosures usually land better once there is a little rapport, and they land warmer framed as a neutral fact than as a warning about yourself.",
+      "try_instead": "If you want to share it, later and lighter works better: 'Heads up, I'm pretty direct, I find it easier that way.' Or share it once you two are clicking."
+    },
+    {
+      "t": "00:55",
+      "quote": "What's the async-invoke endpoint's polling interval, do you know?",
+      "observation": "Right after the quiet moment, you moved straight to a technical question.",
+      "interpretation": "Jumping topics right after an awkward beat can skip the small repair that resets the mood, so the awkwardness carries over.",
+      "confidence": "low",
+      "source": "audio",
+      "why_it_matters": "A tiny acknowledgement often resets a stalled moment before you move on.",
+      "try_instead": "Bridge first: 'Anyway, I didn't mean to info-dump. What are you working on?'"
+    }
+  ],
+  "patterns": [
+    {
+      "label": "reciprocal questions",
+      "finding": "You asked two questions, but neither was about Alex: one was logistics ('is this seat taken?'), one was technical.",
+      "coaching": "Aim for at least one question about the other person in the first minute. A simple rule: after you share something, ask them the same thing back.",
+      "recurring": false
+    },
+    {
+      "label": "talk-time balance",
+      "finding": "You spoke about 66% of the time.",
+      "coaching": "Target closer to 50/50 early on. If you've said three sentences in a row, that's your cue to hand it back.",
+      "recurring": false
+    }
+  ],
+  "what_worked": [
+    "You were warm and easy in the opening ('is this seat taken? I'm Sam') - a clean, friendly start.",
+    "You were honest and self-aware, which is a real strength once the timing is right."
+  ],
+  "next_time": [
+    "After you share something, ask them the same thing back - this alone fixes most of the balance.",
+    "Save personal disclosures for once there's a bit of rapport, and frame them as a neutral fact, not a warning.",
+    "If a moment goes quiet, do a one-line repair before changing topic."
+  ]
+}
