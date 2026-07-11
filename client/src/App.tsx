@@ -104,7 +104,6 @@ function AppShell() {
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center text-[13px] text-ink-3">
           <p>&copy; {new Date().getFullYear()} Wavelength. All rights reserved.</p>
-          <p className="mt-4 md:mt-0">Analyzed locally. Never stored.</p>
         </div>
       </footer>
 
