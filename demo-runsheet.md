@@ -11,6 +11,7 @@
 
 ## Pre-demo checklist (do at the venue, not the night before)
 - [ ] Deployed app URL loads on venue wifi AND on a phone hotspot (test both).
+      Backend is live: https://wavelength-brain-37j5z.ondigitalocean.app/health
 - [ ] DO model access key works: run `python debrief/run_debrief.py` once from the venue.
 - [ ] Sample debrief pre-generated and cached (see Fallback ladder rung 2).
 - [ ] Pre-recorded conversation clip on local disk, not streamed.
