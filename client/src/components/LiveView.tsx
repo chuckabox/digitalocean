@@ -8,7 +8,12 @@ import NudgeToast from './NudgeToast';
 import { useSession } from '@/session/SessionContext';
 import { useSyntheticLoop } from '@/perception/useSyntheticLoop';
 import { useFrameIngest } from '@/perception/useFrameIngest';
+import { useMediaPipe } from '@/perception/useMediaPipe';
 import { requestNudge } from '@/api/nudge';
+
+function forceSynthetic() {
+  return new URLSearchParams(window.location.search).has('synthetic');
+}
 
 interface LiveViewProps {
   onGoToTimeline: () => void;
@@ -51,10 +56,12 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     nudges,
     pushNudge,
     registerCleanup,
+    startedAtMs,
   } = useSession();
 
   const [videoSource, setVideoSource] = useState<'none' | 'camera' | 'clip'>('none');
   const [clipUrl, setClipUrl] = useState<string | null>(null);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const [latest, setLatest] = useState<SignalFrame | null>(null);
   const [nudgeBusy, setNudgeBusy] = useState(false);
   const [toastId, setToastId] = useState<string | null>(null);
@@ -86,14 +93,42 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     [appendFrames],
   );
 
-  useSyntheticLoop(Boolean(sessionId), onFrame);
+  const wantSynthetic =
+    forceSynthetic() || videoSource !== 'camera' || !sessionId;
+  const wantMediaPipe =
+    Boolean(sessionId) && videoSource === 'camera' && !forceSynthetic();
+
+  const { status: mpStatus, error: mpError } = useMediaPipe({
+    enabled: wantMediaPipe,
+    video: videoEl,
+    startedAtMs,
+    onFrame,
+  });
+
+  // Synthetic fills in when camera is off, ?synthetic=1, or MediaPipe not ready/error
+  const syntheticOn =
+    Boolean(sessionId) &&
+    (wantSynthetic || mpStatus === 'error' || (wantMediaPipe && mpStatus !== 'ready'));
+
+  useSyntheticLoop(syntheticOn && (wantSynthetic || mpStatus !== 'ready'), onFrame);
   useFrameIngest(sessionId, frames);
+
+  const sourceLabel = forceSynthetic()
+    ? 'synthetic (?synthetic=1)'
+    : videoSource === 'camera' && mpStatus === 'ready'
+      ? 'MediaPipe'
+      : videoSource === 'camera' && mpStatus === 'loading'
+        ? 'MediaPipe loading…'
+        : 'synthetic fallback';
 
   const handleStartCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setVideoEl(videoRef.current);
+      }
       setVideoSource('camera');
     } catch (err) {
       console.error('Error accessing camera:', err);
@@ -103,6 +138,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
 
   const handleStopCamera = () => {
     stopTracks();
+    setVideoEl(null);
     setVideoSource('none');
   };
 
@@ -178,8 +214,13 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
         <div>
           <h2 className="text-[26px] font-light tracking-tight leading-[1.25]">Live session</h2>
           <p className="font-mono text-xs text-ink-3 mt-1">
-            synthetic 1 Hz loop · press B to dip · camera stays on this device
+            {sourceLabel} · press B to dip (synthetic) · video stays on device
           </p>
+          {mpError && (
+            <p className="text-xs text-alert mt-1" role="alert">
+              MediaPipe: {mpError} — using synthetic signals
+            </p>
+          )}
         </div>
         <Badge variant="accent" size="sm">
           {sessionId ? `session ${sessionId.slice(0, 8)}…` : 'no session'}
