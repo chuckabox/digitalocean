@@ -53,11 +53,6 @@ export default function Header({ phase, onBrandClick, onPhaseChange }: HeaderPro
           )}
 
           <div className="flex items-center gap-3">
-            {phase === 'debrief' && (
-              <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-3">
-                Debrief
-              </span>
-            )}
           </div>
         </div>
       </header>

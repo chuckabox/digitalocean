@@ -241,6 +241,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     setVideoEl(null);
     setVideoSource('none');
     setLatest(null);
+    onGoToTimeline();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

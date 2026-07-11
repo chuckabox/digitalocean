@@ -128,17 +128,13 @@ export default function DebriefView() {
       : frames.reduce((s, f) => s + (f.engagement ?? 0), 0) / frames.length;
 
   return (
-    <div className="pt-4 pb-16 flex flex-col gap-10">
-      <div>
-        <p className="font-mono text-[11px] tracking-[0.08em] uppercase text-ink-3 mb-2">
-          Debrief
-        </p>
-        <h1 className="text-[28px] md:text-[34px] font-medium tracking-tight text-ink mb-2">
-          The conversation, annotated
-        </h1>
-        <p className="text-[15px] text-ink-2 max-w-[52ch]">
-          Engagement over time with suggestion markers. AI summary streams from Claude on
-          DigitalOcean Gradient.
+    <section className="pb-24">
+      <div className="mb-10">
+        <h2 className="font-sans text-[28px] md:text-[32px] tracking-tight font-medium text-ink mb-2">
+          Session debrief
+        </h2>
+        <p className="font-mono text-xs text-ink-3">
+          Engagement over time with suggestion markers · AI summary streams from Claude on DigitalOcean Gradient
         </p>
       </div>
 
@@ -173,7 +169,7 @@ export default function DebriefView() {
         )
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 items-start mb-10">
         <div className="flex flex-col gap-4">
           <div className="h-64 w-full border border-rule bg-paper-2 p-3">
             {chartData.length === 0 ? (
@@ -259,7 +255,7 @@ export default function DebriefView() {
               <dd className="font-mono text-ink">{frames.length}</dd>
             </div>
             <div className="border border-rule p-3">
-              <dt className="text-ink-3 text-xs mb-1">Suggestions</dt>
+              <dt className="text-ink-3 text-xs mb-1">Friction</dt>
               <dd className="font-mono text-ink">{nudges.length}</dd>
             </div>
           </dl>
@@ -349,7 +345,10 @@ export default function DebriefView() {
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex items-center justify-center gap-4">
+        <Button variant="ghost" onClick={reset}>
+          Home
+        </Button>
         <Button
           variant="primary"
           disabled={starting}
@@ -357,10 +356,7 @@ export default function DebriefView() {
         >
           {starting ? 'Starting…' : 'New session'}
         </Button>
-        <Button variant="ghost" onClick={reset}>
-          Home
-        </Button>
       </div>
-    </div>
+    </section>
   );
 }
