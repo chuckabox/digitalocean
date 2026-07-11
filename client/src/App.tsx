@@ -26,7 +26,7 @@ const MODAL_CONTENT = {
 };
 
 function AppShell() {
-  const { phase, setPhase, endAndDebrief, kill, startSession, starting } = useSession();
+  const { phase, setPhase, endAndDebrief, kill, startSession, starting, startError } = useSession();
   const [modal, setModal] = useState<'privacy' | 'terms' | null>(null);
 
   useEffect(() => {
@@ -58,10 +58,18 @@ function AppShell() {
           transition={{ duration: 0.2, ease: 'easeOut' }}
         >
           {phase === 'home' && (
-            <div className="flex items-center justify-center h-[50vh]">
-              <p className="text-ink-3 font-mono text-sm tracking-widest uppercase">
-                {starting ? 'Starting camera...' : ''}
+            <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
+              <p className="text-ink-3 font-mono text-sm tracking-widest uppercase text-center max-w-md">
+                {starting ? 'Starting camera...' : startError ? `Error: ${startError}` : ''}
               </p>
+              {startError && (
+                <button
+                  onClick={() => void startSession()}
+                  className="mt-4 px-4 py-2 bg-ink text-paper rounded-full text-sm font-medium hover:opacity-90"
+                >
+                  Retry Connection
+                </button>
+              )}
             </div>
           )}
           {phase === 'consent' && <ConsentView />}

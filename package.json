@@ -2,7 +2,7 @@
   "name": "wavelength",
   "private": true,
   "scripts": {
-    "dev": "npm run dev --workspace=client",
+    "dev": "npm run dev --workspace=client & npm run dev --workspace=server",
     "build:shared": "npm run build -w shared",
     "typecheck": "npm run build -w shared && npm run typecheck -w server",
     "test": "npm run build -w shared && npm test -w server && npm test -w client",
