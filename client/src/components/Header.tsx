@@ -1,41 +1,51 @@
-type View = 'home' | 'live' | 'stats' | 'timeline'
+import { Button } from './ui/button';
+import type { AppPhase } from '@/session/SessionContext';
 
 interface HeaderProps {
-  currentView: View
-  onViewChange: (view: View) => void
+  phase: AppPhase;
+  onBrandClick: () => void;
+  onEndSession: () => void;
+  onKill: () => void;
 }
 
-const VIEWS: { key: View; label: string }[] = [
-  { key: 'live', label: 'Live' },
-  { key: 'stats', label: 'Stats' },
-  { key: 'timeline', label: 'Timeline' },
-]
-
-export default function Header({ currentView, onViewChange }: HeaderProps) {
+export default function Header({ phase, onBrandClick, onEndSession, onKill }: HeaderProps) {
   return (
     <>
       <header className="flex items-baseline justify-between gap-4 pt-[26px]">
-        <button 
-          onClick={() => onViewChange('home')}
+        <button
+          type="button"
+          onClick={onBrandClick}
           className="text-[21px] font-medium tracking-tight text-ink after:content-['.'] after:text-accent after:font-semibold bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity"
         >
           wavelength
         </button>
-        <nav className="flex gap-[26px]" aria-label="Main">
-          {VIEWS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => onViewChange(key)}
-              className={`font-sans text-[13px] tracking-[0.02em] pb-2 pt-0.5 border-none bg-transparent cursor-pointer ${
-                currentView === key
-                  ? 'text-ink font-semibold shadow-[inset_0_-2px_0_0_var(--color-accent)]'
-                  : 'text-ink-2 font-normal hover:text-ink'
-              } focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
+        <div className="flex items-center gap-3">
+          {phase === 'live' && (
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                className="!border-alert !text-alert hover:!bg-alert-soft"
+                onClick={onKill}
+              >
+                Kill switch
+              </Button>
+              <Button variant="primary" size="sm" onClick={onEndSession}>
+                End session
+              </Button>
+            </>
+          )}
+          {phase === 'debrief' && (
+            <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-3">
+              Debrief
+            </span>
+          )}
+          {phase === 'consent' && (
+            <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-3">
+              Consent
+            </span>
+          )}
+        </div>
       </header>
 
       <div className="h-6 mb-[30px]" aria-hidden="true">
@@ -55,5 +65,5 @@ export default function Header({ currentView, onViewChange }: HeaderProps) {
         </svg>
       </div>
     </>
-  )
+  );
 }

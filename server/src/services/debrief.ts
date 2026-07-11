@@ -1,6 +1,7 @@
 import type { DebriefInput, DebriefRequest, SignalFrame } from 'shared';
 import { stream, type ModelTier } from '../clients/gradient.js';
 import { AppError } from '../errors.js';
+import { logger } from '../logger.js';
 import { getFrames } from '../repositories/frames.js';
 import { cannedDebrief } from './fallbacks.js';
 import { computeMetrics } from './metrics.js';
@@ -93,6 +94,10 @@ export async function* streamDebrief(raw: DebriefRequest): AsyncGenerator<string
     }
   } catch (err) {
     if (err instanceof AppError && err.code === 'upstream_error') {
+      logger.warn(
+        { code: err.code, message: err.message, tier },
+        'Debrief falling back to canned copy',
+      );
       yield cannedDebrief(metrics, req.context);
       return;
     }

@@ -5,6 +5,7 @@ import {
 } from 'shared';
 import { structured } from '../clients/gradient.js';
 import { AppError } from '../errors.js';
+import { logger } from '../logger.js';
 import { cannedNudge } from './fallbacks.js';
 
 const NUDGE_SYSTEM = `You phrase discreet live nudges for Wavelength, a consented social co-pilot.
@@ -55,6 +56,10 @@ export async function phraseNudge(req: NudgeRequest): Promise<NudgeResponse> {
     };
   } catch (err) {
     if (err instanceof AppError && err.code === 'upstream_error') {
+      logger.warn(
+        { code: err.code, message: err.message, confidence: req.confidence },
+        'Nudge falling back to canned copy',
+      );
       return cannedNudge(req.confidence, req.evidence);
     }
     throw err;

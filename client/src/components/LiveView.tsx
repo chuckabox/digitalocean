@@ -1,11 +1,30 @@
-import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card'
-import { Badge } from './ui/badge'
-import { Button } from './ui/button'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import type { SignalFrame } from 'shared';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import NudgeToast from './NudgeToast';
+import { useSession } from '@/session/SessionContext';
+import { useSyntheticLoop } from '@/perception/useSyntheticLoop';
+import { useFrameIngest } from '@/perception/useFrameIngest';
+import { useMediaPipe } from '@/perception/useMediaPipe';
+import {
+  considerNudge,
+  createEngineState,
+  engineOptionsFromSearch,
+  type EngineState,
+} from '@/perception/eventEngine';
+import { useSpeech } from '@/perception/useSpeech';
+import { requestNudge } from '@/api/nudge';
+import type { NudgeResponse } from 'shared';
+
+function forceSynthetic() {
+  return new URLSearchParams(window.location.search).has('synthetic');
+}
 
 interface LiveViewProps {
-  onGoToTimeline: () => void
+  onGoToTimeline: () => void;
 }
 
 function BarTrack({ width, variant }: { width: number; variant: string }) {
@@ -13,7 +32,7 @@ function BarTrack({ width, variant }: { width: number; variant: string }) {
     accent: 'bg-accent',
     alert: 'bg-alert',
     positive: 'bg-positive',
-  }
+  };
   return (
     <div className="flex-1 h-[5px] bg-bar-track rounded-[1px] overflow-hidden">
       <motion.div
@@ -23,149 +42,236 @@ function BarTrack({ width, variant }: { width: number; variant: string }) {
         transition={{ duration: 0.5, ease: 'easeOut' }}
       />
     </div>
-  )
+  );
 }
 
-function AudioMeter({
-  label,
-  value,
-  bandLeft,
-  bandWidth,
-  markerLeft,
-  status,
-  warn,
-}: {
-  label: string
-  value: string
-  bandLeft: number
-  bandWidth: number
-  markerLeft: number
-  status: string
-  warn?: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex justify-between items-baseline">
-        <span className="text-[13px] text-ink-2">{label}</span>
-        <span className={`font-mono text-[13px] font-medium ${warn ? 'text-alert' : 'text-ink'}`}>
-          {value}
-        </span>
-      </div>
-      <div className="relative h-2 bg-bar-track rounded-[1px]">
-        <div
-          className={`absolute top-0 h-full rounded-[1px] ${warn ? 'bg-alert-soft' : 'bg-accent-soft'}`}
-          style={{ left: `${bandLeft}%`, width: `${bandWidth}%` }}
-        />
-        <motion.div
-          className={`absolute -top-0.5 w-0.5 h-3 rounded-[1px] -translate-x-px ${warn ? 'bg-alert' : 'bg-ink'}`}
-          initial={{ left: '50%' }}
-          animate={{ left: `${markerLeft}%` }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-        />
-      </div>
-      <span className={`font-mono text-[10px] tracking-[0.02em] ${warn ? 'text-alert' : 'text-ink-3'}`}>
-        {status}
-      </span>
-    </div>
-  )
+function pct(n: number | undefined) {
+  return Math.round((n ?? 0) * 100);
+}
+
+function formatTime(t: number) {
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function LiveView({ onGoToTimeline }: LiveViewProps) {
-  const [videoSource, setVideoSource] = useState<'none' | 'camera' | 'clip'>('none')
-  const [clipUrl, setClipUrl] = useState<string | null>(null)
-  const [isScanning, setIsScanning] = useState(false)
-  
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    sessionId,
+    context,
+    frames,
+    appendFrames,
+    nudges,
+    pushNudge,
+    registerCleanup,
+    startedAtMs,
+    appendTranscript,
+  } = useSession();
+
+  const [videoSource, setVideoSource] = useState<'none' | 'camera' | 'clip'>('none');
+  const [clipUrl, setClipUrl] = useState<string | null>(null);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [latest, setLatest] = useState<SignalFrame | null>(null);
+  const [nudgeBusy, setNudgeBusy] = useState(false);
+  const [toastId, setToastId] = useState<string | null>(null);
+  const [nudgeError, setNudgeError] = useState<string | null>(null);
+  const [autoNudge, setAutoNudge] = useState(true);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const engineRef = useRef<EngineState>(createEngineState());
+  const engineOpts = useMemo(() => engineOptionsFromSearch(), []);
+  const nudgeInFlight = useRef(false);
+  const framesRef = useRef(frames);
+  framesRef.current = frames;
+
+  const stopTracks = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+  }, []);
+
+  useEffect(() => {
+    registerCleanup(() => {
+      stopTracks();
+      if (clipUrl) URL.revokeObjectURL(clipUrl);
+    });
+    return () => registerCleanup(null);
+  }, [registerCleanup, stopTracks, clipUrl]);
+
+  useEffect(() => {
+    engineRef.current = createEngineState();
+  }, [sessionId]);
+
+  const fireNudge = useCallback(
+    async (confidence: NudgeResponse['confidence'], evidence: string[], t: number) => {
+      if (nudgeInFlight.current) return;
+      nudgeInFlight.current = true;
+      setNudgeBusy(true);
+      setNudgeError(null);
+      try {
+        const res = await requestNudge({
+          sessionId: sessionId ?? undefined,
+          context: context.trim() || undefined,
+          confidence,
+          evidence,
+          recentFrames: framesRef.current.slice(-5),
+        });
+        pushNudge(res, t);
+        setToastId(`${Date.now()}`);
+      } catch (err) {
+        setNudgeError(err instanceof Error ? err.message : 'Nudge failed');
+      } finally {
+        nudgeInFlight.current = false;
+        setNudgeBusy(false);
+      }
+    },
+    [sessionId, context, pushNudge],
+  );
+
+  const onFrame = useCallback(
+    (frame: SignalFrame) => {
+      setLatest(frame);
+      appendFrames([frame]);
+
+      if (!autoNudge) return;
+      const { state, candidate } = considerNudge(engineRef.current, frame, engineOpts);
+      engineRef.current = state;
+      if (candidate) {
+        void fireNudge(candidate.confidence, candidate.evidence, frame.t);
+      }
+    },
+    [appendFrames, autoNudge, engineOpts, fireNudge],
+  );
+
+  const wantSynthetic =
+    forceSynthetic() || videoSource !== 'camera' || !sessionId;
+  const wantMediaPipe =
+    Boolean(sessionId) && videoSource === 'camera' && !forceSynthetic();
+
+  const { status: mpStatus, error: mpError } = useMediaPipe({
+    enabled: wantMediaPipe,
+    video: videoEl,
+    startedAtMs,
+    onFrame,
+  });
+
+  const syntheticOn =
+    Boolean(sessionId) &&
+    (wantSynthetic || mpStatus === 'error' || (wantMediaPipe && mpStatus !== 'ready'));
+
+  useSyntheticLoop(syntheticOn && (wantSynthetic || mpStatus !== 'ready'), onFrame);
+  useFrameIngest(sessionId, frames);
+  useSpeech(Boolean(sessionId), startedAtMs, appendTranscript);
+
+  const sourceLabel = forceSynthetic()
+    ? 'synthetic (?synthetic=1)'
+    : videoSource === 'camera' && mpStatus === 'ready'
+      ? 'MediaPipe'
+      : videoSource === 'camera' && mpStatus === 'loading'
+        ? 'MediaPipe loading…'
+        : 'synthetic fallback';
 
   const handleStartCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = stream;
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        videoRef.current.srcObject = stream;
+        setVideoEl(videoRef.current);
       }
-      setVideoSource('camera')
-      setIsScanning(true)
+      setVideoSource('camera');
     } catch (err) {
-      console.error("Error accessing camera:", err)
-      alert("Could not access camera. Please check permissions.")
+      console.error('Error accessing camera:', err);
+      alert('Could not access camera. Please check permissions.');
     }
-  }
+  };
 
   const handleStopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach(track => track.stop())
-      videoRef.current.srcObject = null
-    }
-    setVideoSource('none')
-    setIsScanning(false)
-  }
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
+    stopTracks();
+    setVideoEl(null);
+    setVideoSource('none');
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setClipUrl(url)
-      setVideoSource('clip')
-      setIsScanning(false)
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach(track => track.stop())
-        videoRef.current.srcObject = null
-      }
-    }
-  }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    stopTracks();
+    const url = URL.createObjectURL(file);
+    setClipUrl(url);
+    setVideoSource('clip');
+  };
 
   const handleClearClip = () => {
-    if (clipUrl) {
-      URL.revokeObjectURL(clipUrl)
-    }
-    setClipUrl(null)
-    setVideoSource('none')
-    setIsScanning(false)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
+    if (clipUrl) URL.revokeObjectURL(clipUrl);
+    setClipUrl(null);
+    setVideoSource('none');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
-  const handleScanClip = () => {
-    setIsScanning(true)
-    if (videoRef.current) {
-      videoRef.current.play()
-    }
-  }
+  const handleNudge = async () => {
+    if (!latest || nudgeBusy) return;
+    const evidence = [
+      `engagement ~${pct(latest.engagement)}%`,
+      `attention ~${pct(latest.attention)}%`,
+      ...(latest.signals?.gazeAway != null
+        ? [`gazeAway ~${pct(latest.signals.gazeAway)}%`]
+        : []),
+    ].slice(0, 12);
+    await fireNudge(latest.confidence ?? 'medium', evidence, latest.t);
+  };
+
+  const activeToast = useMemo(() => {
+    if (!toastId) return null;
+    const last = nudges[nudges.length - 1];
+    if (!last) return null;
+    return { ...last, id: toastId };
+  }, [nudges, toastId]);
+
+  const confPct =
+    latest?.confidence === 'high' ? 88 : latest?.confidence === 'medium' ? 64 : latest ? 42 : 0;
+
+  const signalRows = [
+    { label: 'Engagement', width: pct(latest?.engagement), variant: 'accent' },
+    { label: 'Attention', width: pct(latest?.attention), variant: 'positive' },
+    {
+      label: 'Gaze away',
+      width: pct(latest?.signals?.gazeAway),
+      variant: (latest?.signals?.gazeAway ?? 0) > 0.55 ? 'alert' : 'accent',
+    },
+  ];
+
+  const recentNudges = [...nudges].reverse().slice(0, 5);
 
   return (
     <section>
-      <div className="mb-[26px]">
-        <h2 className="text-[26px] font-light tracking-tight leading-[1.25]">Live session</h2>
-        <p className="font-mono text-xs text-ink-3 mt-1">
-          real-time cue reading · camera and audio stay on this device
-        </p>
+      <div className="mb-[26px] flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[26px] font-light tracking-tight leading-[1.25]">Live session</h2>
+          <p className="font-mono text-xs text-ink-3 mt-1">
+            {sourceLabel} · press B to dip (synthetic) · video stays on device
+          </p>
+          {mpError && (
+            <p className="text-xs text-alert mt-1" role="alert">
+              MediaPipe: {mpError} — using synthetic signals
+            </p>
+          )}
+        </div>
+        <Badge variant="accent" size="sm">
+          {sessionId ? `session ${sessionId.slice(0, 8)}…` : 'no session'}
+        </Badge>
       </div>
 
       <div className="grid grid-cols-[1fr_380px] gap-10 items-start max-[900px]:grid-cols-1">
-        {/* Camera */}
         <div className="flex flex-col gap-3.5">
           <div className="aspect-[4/3] bg-paper-2 border border-rule rounded-[2px] flex items-center justify-center relative overflow-hidden">
             {videoSource === 'none' && (
               <div className="text-center p-6">
-                <div className="mb-3">
-                  <svg viewBox="0 0 24 24" className="w-[30px] h-[30px] stroke-ink-3 fill-none mx-auto" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="6" width="15" height="13" rx="1" />
-                    <path d="M17 10l4-2.5v9L17 14" />
-                  </svg>
-                </div>
                 <p className="text-[15px] font-medium text-ink-2 mb-0.5">Camera feed</p>
-                <p className="font-mono text-xs text-ink-3">press start to begin reading</p>
+                <p className="font-mono text-xs text-ink-3">optional — signals run synthetically</p>
               </div>
             )}
-            
             <video
               ref={videoRef}
               autoPlay={videoSource === 'camera'}
@@ -176,153 +282,149 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               playsInline
             />
           </div>
-          
-          <input 
-            type="file" 
-            accept="video/*" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            className="hidden" 
+
+          <input
+            type="file"
+            accept="video/*"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
           />
 
           <div className="flex gap-2.5">
             {videoSource === 'none' && (
               <>
-                <Button variant="primary" className="flex-1" onClick={handleStartCamera}>Start Live Camera</Button>
-                <Button variant="default" className="flex-1" onClick={handleUploadClick}>Upload Clip</Button>
+                <Button variant="primary" className="flex-1" onClick={() => void handleStartCamera()}>
+                  Start Live Camera
+                </Button>
+                <Button variant="default" className="flex-1" onClick={() => fileInputRef.current?.click()}>
+                  Upload Clip
+                </Button>
               </>
             )}
-            
             {videoSource === 'camera' && (
-              <Button variant="default" className="flex-1 text-alert border-alert/20 hover:bg-alert/10" onClick={handleStopCamera}>
+              <Button
+                variant="default"
+                className="flex-1 text-alert border-alert/20 hover:bg-alert/10"
+                onClick={handleStopCamera}
+              >
                 Stop Camera
               </Button>
             )}
-
             {videoSource === 'clip' && (
-              <>
-                <Button variant="primary" className="flex-1" onClick={handleScanClip} disabled={isScanning}>
-                  {isScanning ? 'Scanning...' : 'Scan Clip'}
-                </Button>
-                <Button variant="default" className="flex-1" onClick={handleClearClip}>Clear Clip</Button>
-              </>
+              <Button variant="default" className="flex-1" onClick={handleClearClip}>
+                Clear Clip
+              </Button>
             )}
           </div>
         </div>
 
-        {/* Panels */}
         <div className="flex flex-col gap-[26px]">
-          {/* Detected Face */}
           <Card>
             <CardHeader>
-              <CardTitle>Detected Face</CardTitle>
-              <CardDescription>1 subject</CardDescription>
+              <CardTitle>Tracking</CardTitle>
+              <CardDescription>{latest ? `t = ${formatTime(latest.t)}` : 'warming up'}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 border border-rule rounded-[2px] bg-paper-2 flex items-center justify-center shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-[22px] h-[22px]">
-                    <circle cx="12" cy="9" r="4" fill="none" stroke="currentColor" className="text-ink-3" strokeWidth="1.25" />
-                    <ellipse cx="12" cy="21" rx="7" ry="5.5" fill="none" stroke="currentColor" className="text-ink-3" strokeWidth="1.25" />
-                  </svg>
-                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-ink-2 mb-1.5">Confidence</div>
+                  <div className="text-[13px] text-ink-2 mb-1.5">
+                    Confidence{' '}
+                    <Badge size="sm" variant="accent" className="ml-1">
+                      {latest?.confidence ?? '—'}
+                    </Badge>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <BarTrack width={78} variant="accent" />
-                    <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">78%</span>
+                    <BarTrack width={confPct} variant="accent" />
+                    <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
+                      {confPct}%
+                    </span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Interpretation */}
           <Card>
             <CardHeader>
-              <CardTitle>Interpretation</CardTitle>
-              <CardDescription>2s ago</CardDescription>
+              <CardTitle>Signals</CardTitle>
+              <CardDescription>descriptors only — never emotion labels</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-base leading-[1.75] font-light">
-                She crossed her arms and is giving shorter answers. This often signals{' '}
-                <Badge variant="accent">disengagement</Badge>{' '}
-                or discomfort with the current topic. Consider shifting to an open-ended question.
-              </p>
-              <Badge variant="accent" className="mt-3.5">disengagement</Badge>
-            </CardContent>
-          </Card>
-
-          {/* Signals + Audio side by side */}
-          <div className="grid grid-cols-2 gap-8 max-[560px]:grid-cols-1 max-[560px]:gap-[26px]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Signals</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-3.5">
-                  {[
-                    { label: 'Happiness', width: 35, variant: 'positive' },
-                    { label: 'Tension', width: 62, variant: 'alert' },
-                    { label: 'Interest', width: 28, variant: 'accent' },
-                  ].map((s) => (
-                    <div key={s.label} className="grid grid-cols-[76px_1fr_40px] items-center gap-2.5">
-                      <span className="text-[13px] text-ink-2">{s.label}</span>
-                      <BarTrack width={s.width} variant={s.variant} />
-                      <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">{s.width}%</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Audio</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-4">
-                  <AudioMeter label="Tone variation" value="12%" bandLeft={15} bandWidth={55} markerLeft={12} status="below typical range (15–70%)" />
-                  <AudioMeter label="Pace" value="96 wpm" bandLeft={20} bandWidth={47} markerLeft={16} status="slowing · typical 120–180 wpm" warn />
-                  <AudioMeter label="Volume" value="58%" bandLeft={30} bandWidth={40} markerLeft={58} status="dropping · was 74% at start" warn />
-                </div>
-                <p className="font-mono text-[10px] text-ink-3 leading-normal mt-2.5 pt-2.5 border-t border-rule">
-                  Typical range is a guide, not a goal. Being outside it isn't bad on its own — it's a cue to notice.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Live Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline</CardTitle>
-              <Button variant="link" size="sm" onClick={onGoToTimeline} className="text-xs p-0">View full timeline</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col">
-                {[
-                  { time: '0:18', desc: 'Vocal pace slowing, volume drop', chan: 'Audio', kind: 'Note', kindVariant: 'default' as const },
-                  { time: '0:12', desc: 'Disengagement signals detected', chan: 'Visual', kind: 'Alert', kindVariant: 'alert' as const },
-                  { time: '0:08', desc: 'Active listening, leaning in', chan: 'Visual', kind: 'Positive', kindVariant: 'positive' as const },
-                ].map((ev, i, arr) => (
-                  <div
-                    key={ev.time}
-                    className={`grid grid-cols-[46px_1fr_auto] gap-3 py-[11px] items-center ${i < arr.length - 1 ? 'border-b border-rule' : ''} ${i === 0 ? 'pt-0' : ''} ${i === arr.length - 1 ? 'pb-0' : ''}`}
-                  >
-                    <span className="font-mono text-xs text-ink-3">{ev.time}</span>
-                    <span className="text-[13px] leading-normal">{ev.desc}</span>
-                    <span className="flex gap-1.5">
-                      <Badge size="sm" className="border border-rule">{ev.chan}</Badge>
-                      <Badge variant={ev.kindVariant} size="sm">{ev.kind}</Badge>
+              <div className="flex flex-col gap-3.5">
+                {signalRows.map((s) => (
+                  <div key={s.label} className="grid grid-cols-[88px_1fr_40px] items-center gap-2.5">
+                    <span className="text-[13px] text-ink-2">{s.label}</span>
+                    <BarTrack width={s.width} variant={s.variant} />
+                    <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
+                      {s.width}%
                     </span>
                   </div>
                 ))}
               </div>
+              <div className="mt-4 flex flex-col gap-2">
+                <Button
+                  variant="primary"
+                  disabled={!latest || nudgeBusy}
+                  onClick={() => void handleNudge()}
+                >
+                  {nudgeBusy ? 'Requesting…' : 'Request nudge'}
+                </Button>
+                <label className="flex items-center gap-2 text-[12px] text-ink-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoNudge}
+                    onChange={(e) => setAutoNudge(e.target.checked)}
+                    className="accent-[var(--color-accent)]"
+                  />
+                  Auto-nudge (event engine · 90s cooldown)
+                </label>
+                {nudgeError && (
+                  <p className="text-xs text-alert" role="alert">
+                    {nudgeError}
+                  </p>
+                )}
+                <p className="font-mono text-[10px] text-ink-3">
+                  Tune with ?dipZ=-1.2&dipHold=8&cooldown=60 · press B to dip (synthetic)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Timeline</CardTitle>
+              <Button variant="link" size="sm" onClick={onGoToTimeline} className="text-xs p-0">
+                End → debrief
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col">
+                {recentNudges.length === 0 && (
+                  <p className="text-[13px] text-ink-3">No nudges yet — request one when ready.</p>
+                )}
+                {recentNudges.map((ev, i, arr) => (
+                  <div
+                    key={ev.id}
+                    className={`grid grid-cols-[46px_1fr_auto] gap-3 py-[11px] items-center ${i < arr.length - 1 ? 'border-b border-rule' : ''} ${i === 0 ? 'pt-0' : ''} ${i === arr.length - 1 ? 'pb-0' : ''}`}
+                  >
+                    <span className="font-mono text-xs text-ink-3">{formatTime(ev.t)}</span>
+                    <span className="text-[13px] leading-normal">{ev.text}</span>
+                    <Badge variant="accent" size="sm">
+                      {ev.confidence}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              <p className="font-mono text-[10px] text-ink-3 mt-3">
+                frames buffered: {frames.length}
+              </p>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <NudgeToast nudge={activeToast} onDismiss={() => setToastId(null)} />
     </section>
-  )
+  );
 }
