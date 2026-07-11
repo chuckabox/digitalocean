@@ -1,8 +1,8 @@
-# BUILD PLAN — "Attune" (working name)
+# BUILD PLAN — Wavelength
 
 > A consented social co-pilot that reads the *trajectory* of a conversation — and suggests, never diagnoses.
 > One-day hackathon build plan. Team of 2–3. Hard code freeze at hour 6.5.
-> Working name alternatives: **Tandem**, **Undertone**. Pick in the first 10 minutes, don't debate it.
+> Product name: **Wavelength**.
 
 ---
 
@@ -116,7 +116,7 @@ Nudge trigger example (deterministic + explainable): *engagement z-score < −1.
 
 | Time | Person A (frontend-strongest) | Person B | Person C / shared |
 |---|---|---|---|
-| **0:00–0:30** | ALL TOGETHER: pick name; write the 2-min demo script (§6) — it is the scope contract; scaffold Vite app | curl DO: `GET /v1/models` (confirm model names), test chat completion + tool-calling; **provision Postgres now** | create App Platform app from repo |
+| **0:00–0:30** | ALL TOGETHER: write the 2-min demo script (§6) — it is the scope contract; scaffold Vite app as **Wavelength** | curl DO: `GET /v1/models` (confirm model names), test chat completion + tool-calling; **provision Postgres now** | create App Platform app from repo |
 | **0:30–2:00** | MediaPipe → blendshapes on screen (**GATE M1 @ 2:00**) | Express proxy + `/api/nudge` with forced tool call | Consent screen + app shell (dark glass) |
 | **2:00–3:30** | Derived signals + baseline + live engagement chart (**GATE M2 @ 3:30: line visibly falls when someone acts bored**) | `/api/debrief` streaming + `/api/frames` → Postgres | Web Speech transcript + talk-time fusion |
 | **3:30–5:00** | Event engine + nudge toast wired to `/api/nudge` (**GATE M3 @ 5:00: full loop end-to-end on the live URL**) | Debrief screen: hero timeline chart + streaming text | Seed fake past sessions; deploy checks |

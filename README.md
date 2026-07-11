@@ -1,6 +1,9 @@
-# Social co-pilot
+# Wavelength
 
-A consented social co-pilot for reading social cues in real conversations — live nudges in the moment, annotated debrief afterward. Runs on DigitalOcean.
+A consented social co-pilot for reading social cues in real conversations — discreet
+live nudges in the moment, an annotated debrief afterward. Runs on DigitalOcean.
 
-- Product vision: [AGENTS.md](./AGENTS.md)
-- Hackathon goals & DO reference: [docs/](./docs/)
+- **Build plan** (start here): [BUILD_PLAN.md](./BUILD_PLAN.md)
+- Product vision: [docs/vision.md](./docs/vision.md)
+- Hackathon goals & judging: [docs/hackathon-goals.md](./docs/hackathon-goals.md)
+- DigitalOcean reference: [docs/digitalocean.md](./docs/digitalocean.md)
