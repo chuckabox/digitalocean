@@ -633,9 +633,6 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
           <Card>
             <CardHeader>
               <CardTitle>Timeline</CardTitle>
-              <Button variant="link" size="sm" onClick={onGoToTimeline} className="text-xs p-0">
-                End → debrief
-              </Button>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col">
@@ -661,6 +658,17 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="mt-12 flex justify-center">
+        <Button 
+          variant="primary" 
+          size="lg" 
+          className="rounded-full px-12 py-6 text-lg shadow-lg hover:shadow-xl transition-all"
+          onClick={onGoToTimeline}
+        >
+          Review Session
+        </Button>
       </div>
 
     </section>
