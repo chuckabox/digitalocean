@@ -68,7 +68,7 @@ export default function TimelineView() {
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 w-full">
           {/* 7 Day Strip */}
-          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 w-full md:w-auto">
+          <div className="flex items-center justify-between gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 w-full flex-1 md:pr-12">
             {Array.from({ length: 7 }, (_, i) => {
               const stripEndObj = new Date(stripEndDate + 'T12:00:00')
               const d = addDays(stripEndObj, i - 6)
@@ -79,7 +79,7 @@ export default function TimelineView() {
                 <button
                   key={iso}
                   onClick={() => setSelectedDate(iso)}
-                  className={`font-sans flex flex-col items-center gap-1 py-2.5 px-3 pb-2 border rounded-xl cursor-pointer min-w-[56px] transition-all ${
+                  className={`font-sans flex flex-col items-center gap-1 py-2.5 px-3 pb-2 border rounded-xl cursor-pointer min-w-[56px] flex-1 transition-all ${
                     isActive
                       ? 'bg-ink border-ink shadow-sm scale-105'
                       : 'bg-transparent border-rule hover:border-ink-3 hover:bg-[#FAFAFA]'
