@@ -27,8 +27,14 @@ const MODAL_CONTENT = {
 };
 
 function AppShell() {
-  const { phase, setPhase, endAndDebrief, kill, startSession } = useSession();
+  const { phase, setPhase, endAndDebrief, kill, startSession, starting } = useSession();
   const [modal, setModal] = useState<'privacy' | 'terms' | null>(null);
+
+  useEffect(() => {
+    if (phase === 'home') {
+      void startSession();
+    }
+  }, [phase, startSession]);
 
   return (
     <div className="relative max-w-[1160px] mx-auto px-7 pb-14">
@@ -52,7 +58,13 @@ function AppShell() {
           exit="exit"
           transition={{ duration: 0.2, ease: 'easeOut' }}
         >
-          {phase === 'home' && <LandingPage onEnterApp={() => void startSession()} />}
+          {phase === 'home' && (
+            <div className="flex items-center justify-center h-[50vh]">
+              <p className="text-ink-3 font-mono text-sm tracking-widest uppercase">
+                {starting ? 'Starting camera...' : ''}
+              </p>
+            </div>
+          )}
           {phase === 'consent' && <ConsentView />}
           {phase === 'live' && (
             <LiveView onGoToTimeline={() => void endAndDebrief()} />
