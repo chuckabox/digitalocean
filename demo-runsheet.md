@@ -24,8 +24,8 @@
 | 0:00 | Hook: the origin story | Nothing on screen — faces on the Narrator |
 | 0:20 | Problem | Title slide / app landing |
 | 0:35 | Solution: what Wavelength is | App open, empty state |
-| 0:55 | The conversation plays; STOP on the silence | Play clip; pause at 00:49; let it hang |
-| 1:10 | Run the debrief LIVE | Click analyze; while it runs, Narrator vamps one line |
+| 0:55 | The conversation plays; STOP on the silence | Play clip; pause at 00:49; let it hang. **Click analyze as the clip starts** — real generation takes ~20s, so it finishes while the clip plays |
+| 1:10 | Reveal the debrief | Results are already in; scroll begins |
 | 1:20 | Land on the 00:44 moment | Scroll to the disclosure moment; read `try_instead` aloud |
 | 1:40 | Tech + DO story | Metrics panel + (optional) live model swap |
 | 2:00 | Close + tagline | Landing view: "Get on their wavelength." |

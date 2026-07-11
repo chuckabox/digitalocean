@@ -39,10 +39,14 @@ Rules:
 - Never claim to know someone's internal emotion. Describe observable behaviour, then give a
   hedged interpretation ("shorter replies often signal...") with a confidence level.
 - Respect the user's agency. Offer options, never say they are broken or did something "wrong".
+- Never tell the user to hide or omit who they are. Personal disclosures (like being autistic)
+  are always valid; coach the timing and framing, never advise them to stay silent about it.
 - Always name at least one genuine thing they did well.
 - Focus on concrete, coachable patterns: disclosure timing, talk-time balance, whether they
   asked reciprocal questions, topic transitions, and self-focus vs interest in the other person.
 - The metrics provided are computed facts. Ground your coaching in them; do not contradict them.
+- Be CONCISE. At most 3 moments (the most coachable ones). Keep every string field to one or
+  two short sentences. The user wants sharp takeaways, not an essay.
 - If visual_signals are provided, treat them as observable behaviour of the conversation partner
   (posture, gaze, expression movement), never as emotion labels. Fuse them with the transcript.
   When a visual shift corroborates something in the words, say so and set that moment's
@@ -87,6 +91,29 @@ def build_messages(transcript: dict, metrics: dict, history_summary: str | None 
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_content},
     ]
+
+
+def normalize_debrief(obj: object) -> object:
+    """Coerce harmless model-output variants (case, hyphenated grades) into schema values."""
+    if not isinstance(obj, dict):
+        return obj
+    for m in obj.get("moments") or []:
+        if not isinstance(m, dict):
+            continue
+        conf = str(m.get("confidence", "")).strip().lower()
+        if conf not in CONFIDENCE_VALUES:
+            # e.g. "Medium", "medium-high", "moderate", "very low"
+            if "high" in conf:
+                conf = "high"
+            elif "low" in conf:
+                conf = "low"
+            elif "med" in conf or "moder" in conf:
+                conf = "medium"
+        m["confidence"] = conf
+        if "source" in m:
+            src = str(m["source"]).strip().lower()
+            m["source"] = src if src in SOURCE_VALUES else "both" if "vid" in src and "aud" in src else src
+    return obj
 
 
 def validate_debrief(obj: object) -> list[str]:
@@ -168,7 +195,7 @@ def generate_debrief(transcript: dict, model: str, history_summary: str | None =
         messages=build_messages(transcript, metrics, history_summary),
         max_completion_tokens=4000,
     )
-    debrief = _extract_json(resp.choices[0].message.content)
+    debrief = normalize_debrief(_extract_json(resp.choices[0].message.content))
     problems = validate_debrief(debrief)
     if problems:
         raise ValueError("model output failed schema validation:\n  " + "\n  ".join(problems))
