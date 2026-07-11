@@ -38,14 +38,18 @@
 > Concrete, honest, and something he can actually practice.
 
 **[1:40-2:00] Tech + why DigitalOcean (know the audience)**
-> All of this runs on DigitalOcean. Transcription and speaker separation feed a reasoning model on
-> DO's Inference Engine. We compute the hard numbers in code so the coaching is grounded, not
-> guessed. And every conversation is stored with pgvector, so Wavelength learns your patterns and
-> tracks your progress over time.
+> Everything you just watched ran live on DigitalOcean: the backend on App Platform, the
+> reasoning on the Inference Engine — Claude Haiku, about twenty seconds a debrief — and every
+> conversation lands in Managed Postgres, so Wavelength learns your recurring patterns and can
+> show you actually improving across sessions. We compute the hard numbers in code so the
+> coaching is grounded in facts, not vibes.
 
-*[Optional flex: swap the model live.]*
-> We can even swap the model on the fly and watch the read get sharper. One line of code on their
-> platform.
+*[Optional flex: swap the model live — VERIFIED, both models pass reliably.]*
+> One dropdown, and the same debrief re-runs on Claude Sonnet — watch the reads get sharper.
+> One key, any model. That's their platform doing the flexing.
+
+*[Optional closing beat: hit "Read aloud" — the debrief speaks in a calm voice.]*
+> And for anyone who processes speech better than text, Wavelength will just tell you — kindly.
 
 **[2:00] Close**
 > Real social coaching costs thousands, or it just doesn't exist. Wavelength turns every awkward
@@ -84,3 +88,15 @@ actual product instead of plumbing.
 Individuals who want to improve, as a subscription. And a real B2B angle: employers and
 universities running neurodiversity-inclusion programs, and social-skills therapists who want a
 between-sessions practice tool for clients.
+
+**"Why not coach in real time, during the conversation?"** *(likely question — we have a strong answer)*
+Deliberate design choice, for the user's sake. They're already working hard to track one voice;
+a second voice whispering advice splits attention and makes the conversation worse, not better.
+Debriefing afterward is how every serious skill gets coached — athletes watch film, pilots debrief
+flights. Also: honest latency. Real-time cloud inference adds seconds of lag; a nudge that
+arrives after the moment has passed is worse than none. Live nudges are on the roadmap as
+opt-in, but the debrief is the product.
+
+**"What does a debrief cost to run?"**
+Around a cent of inference on Haiku. The whole demo today runs on pocket change — that's the
+serverless pay-per-token model working as intended.

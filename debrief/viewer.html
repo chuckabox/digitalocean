@@ -67,7 +67,15 @@
     <button class="primary" id="analyze">Analyze sample conversation</button>
     <button id="offline">Load offline fixture</button>
     <button id="speak">🔊 Read aloud</button>
+    <button id="paste-toggle">Analyze my own…</button>
     <span id="status"></span>
+  </div>
+
+  <div id="paste-area" style="display:none; margin-bottom:1rem">
+    <textarea id="paste-json" placeholder='Paste a transcript JSON from recorder.html (needs "user_speaker" and "turns")'
+      style="width:100%; height:8rem; font-family:monospace; font-size:.8rem; padding:.6rem;
+             border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink)"></textarea>
+    <button class="primary" id="paste-analyze" style="margin-top:.4rem">Analyze pasted transcript</button>
   </div>
 
   <div id="view"></div>
@@ -154,7 +162,7 @@ function render(d) {
   document.getElementById("view").innerHTML = h;
 }
 
-async function analyze() {
+async function analyze(transcript = SAMPLE_TRANSCRIPT) {
   const btn = document.getElementById("analyze"), status = document.getElementById("status");
   const base = document.getElementById("api").value.replace(/\/$/, "");
   const model = document.getElementById("model").value;
@@ -164,16 +172,26 @@ async function analyze() {
   try {
     const r = await fetch(`${base}/api/debrief?model=${encodeURIComponent(model)}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(SAMPLE_TRANSCRIPT),
+      body: JSON.stringify(transcript),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || r.status);
     render(d);
     status.textContent = `done in ${((Date.now() - t0) / 1000).toFixed(1)}s — ${model}`;
   } catch (e) {
-    status.textContent = "error: " + e.message + " — falling back to offline fixture";
-    loadOffline();
+    status.textContent = "error: " + e.message + (transcript === SAMPLE_TRANSCRIPT ? " — falling back to offline fixture" : "");
+    if (transcript === SAMPLE_TRANSCRIPT) loadOffline();
   } finally { btn.disabled = false; }
+}
+
+function analyzePasted() {
+  let t;
+  try { t = JSON.parse(document.getElementById("paste-json").value); }
+  catch { document.getElementById("status").textContent = "that isn't valid JSON — export it from recorder.html"; return; }
+  if (!t.turns || !t.user_speaker) {
+    document.getElementById("status").textContent = 'transcript needs "turns" and "user_speaker"'; return;
+  }
+  analyze(t);
 }
 
 async function loadOffline() {
@@ -187,9 +205,14 @@ async function loadOffline() {
   }
 }
 
-document.getElementById("analyze").onclick = analyze;
+document.getElementById("analyze").onclick = () => analyze();
 document.getElementById("offline").onclick = loadOffline;
 document.getElementById("speak").onclick = speak;
+document.getElementById("paste-toggle").onclick = () => {
+  const a = document.getElementById("paste-area");
+  a.style.display = a.style.display === "none" ? "block" : "none";
+};
+document.getElementById("paste-analyze").onclick = analyzePasted;
 loadOffline();
 </script>
 </body>

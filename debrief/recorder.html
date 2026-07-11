@@ -100,7 +100,7 @@
   };
 
   document.getElementById("send").onclick = async () => {
-    const base = prompt("Server base URL", "http://localhost:8080");
+    const base = prompt("Server base URL", "https://wavelength-brain-37j5z.ondigitalocean.app");
     if (!base) return;
     const r = await fetch(base.replace(/\/$/, "") + "/api/debrief", {
       method: "POST",
