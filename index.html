@@ -291,11 +291,22 @@
   .dual-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
   /* ── Audio ── */
-  .audio-metrics { display: flex; flex-direction: column; gap: 12px; }
+  .audio-metrics { display: flex; flex-direction: column; gap: 14px; }
+  .audio-metric { display: flex; flex-direction: column; gap: 4px; }
   .audio-row { display: flex; justify-content: space-between; align-items: center; }
   .audio-key { font-size: 13px; color: var(--text-secondary); font-weight: 400; }
   .audio-val { font-size: 13px; font-weight: 500; color: var(--text); }
   .audio-val--warn { color: var(--alert); }
+
+  .audio-spark { width: 100%; height: 20px; display: block; }
+  .audio-spark polyline {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .audio-spark--neutral polyline { stroke: var(--text-muted); }
+  .audio-spark--warn polyline { stroke: var(--alert); }
 
   /* ── Timeline (shared) ── */
   .timeline { display: flex; flex-direction: column; }
@@ -326,6 +337,9 @@
   .t-tag--alert { background: var(--alert-soft); color: var(--alert); }
   .t-tag--positive { background: var(--positive-soft); color: var(--positive); }
   .t-tag--neutral { background: var(--neutral-soft); color: var(--text-muted); }
+  .t-tag--chan { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+
+  .t-tags { display: flex; gap: 6px; }
 
   /* ── Stats: KPI tiles ── */
   .stat-row {
@@ -436,19 +450,24 @@
   .focus-list { display: flex; flex-direction: column; gap: 12px; }
 
   .focus-card {
+    position: relative;
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px 14px;
     background: var(--bg);
   }
 
+  .focus-card > .focus-chip {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+
   .focus-card-title {
     font-size: 13px;
     font-weight: 600;
     margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    padding-right: 84px;
   }
 
   .focus-chip {
@@ -467,6 +486,10 @@
 
   /* ── Timeline view ── */
   .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+  .filter-groups { display: flex; gap: 28px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filter-label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 
   .chip {
     font-family: "Lexend", sans-serif;
@@ -618,9 +641,24 @@
             <div class="panel-header"><span class="panel-title">Audio</span></div>
             <div class="panel-body">
               <div class="audio-metrics">
-                <div class="audio-row"><span class="audio-key">Tone</span><span class="audio-val">Flat</span></div>
-                <div class="audio-row"><span class="audio-key">Pace</span><span class="audio-val audio-val--warn">Slowing</span></div>
-                <div class="audio-row"><span class="audio-key">Volume</span><span class="audio-val audio-val--warn">Dropping</span></div>
+                <div class="audio-metric">
+                  <div class="audio-row"><span class="audio-key">Tone</span><span class="audio-val">Flat</span></div>
+                  <svg class="audio-spark audio-spark--neutral" viewBox="0 0 120 20" preserveAspectRatio="none" aria-label="Tone variation over the last 30 seconds: flat">
+                    <polyline points="2,10 20,9.3 38,10.6 56,9.5 74,10.4 92,9.6 118,10.1" vector-effect="non-scaling-stroke"/>
+                  </svg>
+                </div>
+                <div class="audio-metric">
+                  <div class="audio-row"><span class="audio-key">Pace</span><span class="audio-val audio-val--warn">Slowing</span></div>
+                  <svg class="audio-spark audio-spark--warn" viewBox="0 0 120 20" preserveAspectRatio="none" aria-label="Speaking pace over the last 30 seconds: slowing">
+                    <polyline points="2,6 21,6.4 40,7.2 59,8.4 78,10 97,11.8 118,13.6" vector-effect="non-scaling-stroke"/>
+                  </svg>
+                </div>
+                <div class="audio-metric">
+                  <div class="audio-row"><span class="audio-key">Volume</span><span class="audio-val audio-val--warn">Dropping</span></div>
+                  <svg class="audio-spark audio-spark--warn" viewBox="0 0 120 20" preserveAspectRatio="none" aria-label="Volume over the last 30 seconds: dropping">
+                    <polyline points="2,5 21,5.4 40,6.6 59,8.2 78,10.4 97,12.8 118,15.4" vector-effect="non-scaling-stroke"/>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -636,17 +674,17 @@
               <div class="timeline-event">
                 <span class="t-time">0:18</span>
                 <span class="t-desc">Vocal pace slowing, volume drop</span>
-                <span class="t-tag t-tag--neutral">Audio</span>
+                <span class="t-tags"><span class="t-tag t-tag--chan">Audio</span><span class="t-tag t-tag--neutral">Note</span></span>
               </div>
               <div class="timeline-event">
                 <span class="t-time">0:12</span>
                 <span class="t-desc">Disengagement signals detected</span>
-                <span class="t-tag t-tag--alert">Alert</span>
+                <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--alert">Alert</span></span>
               </div>
               <div class="timeline-event">
                 <span class="t-time">0:08</span>
                 <span class="t-desc">Active listening, leaning in</span>
-                <span class="t-tag t-tag--positive">Positive</span>
+                <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
               </div>
             </div>
           </div>
@@ -660,6 +698,12 @@
     <div class="view-header">
       <h2 class="view-title">How people experience you</h2>
       <p class="view-sub">Across 12 practice sessions · last 30 days</p>
+    </div>
+
+    <div class="filter-row" role="group" aria-label="Signal channel">
+      <button class="chip active" data-stats-channel="all">All signals</button>
+      <button class="chip" data-stats-channel="visual">Visual · face &amp; body</button>
+      <button class="chip" data-stats-channel="audio">Audio · speech</button>
     </div>
 
     <div class="stat-row">
@@ -713,15 +757,15 @@
               <text x="620" y="222" text-anchor="middle" font-size="11" fill="#9B958C" font-family="Lexend, sans-serif">12</text>
               <text x="332" y="238" text-anchor="middle" font-size="11" fill="#9B958C" font-family="Lexend, sans-serif">Session</text>
               <!-- area wash -->
-              <polygon points="44,164.8 96.4,147.2 148.7,156 201.1,125.2 253.5,134 305.8,107.6 358.2,120.8 410.5,98.8 462.9,81.2 515.3,94.4 567.6,68 620,59.2 620,200 44,200" fill="#4A8B7F" opacity="0.1"/>
+              <polygon id="trend-area" points="44,164.8 96.4,147.2 148.7,156 201.1,125.2 253.5,134 305.8,107.6 358.2,120.8 410.5,98.8 462.9,81.2 515.3,94.4 567.6,68 620,59.2 620,200 44,200" fill="#4A8B7F" opacity="0.1"/>
               <!-- line -->
-              <polyline points="44,164.8 96.4,147.2 148.7,156 201.1,125.2 253.5,134 305.8,107.6 358.2,120.8 410.5,98.8 462.9,81.2 515.3,94.4 567.6,68 620,59.2" fill="none" stroke="#4A8B7F" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+              <polyline id="trend-line" points="44,164.8 96.4,147.2 148.7,156 201.1,125.2 253.5,134 305.8,107.6 358.2,120.8 410.5,98.8 462.9,81.2 515.3,94.4 567.6,68 620,59.2" fill="none" stroke="#4A8B7F" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
               <!-- crosshair + hover dot -->
               <line id="crosshair" x1="0" y1="24" x2="0" y2="200" stroke="#C4BEB4" stroke-width="1" visibility="hidden"/>
               <circle id="hover-dot" r="5" fill="#4A8B7F" stroke="#FEFDFB" stroke-width="2" visibility="hidden"/>
               <!-- end marker + label -->
-              <circle cx="620" cy="59.2" r="4.5" fill="#4A8B7F" stroke="#FEFDFB" stroke-width="2"/>
-              <text x="614" y="48" text-anchor="end" font-size="12" font-weight="600" fill="#2D2A26" font-family="Lexend, sans-serif">72</text>
+              <circle id="end-dot" cx="620" cy="59.2" r="4.5" fill="#4A8B7F" stroke="#FEFDFB" stroke-width="2"/>
+              <text id="end-label" x="614" y="48" text-anchor="end" font-size="12" font-weight="600" fill="#2D2A26" font-family="Lexend, sans-serif">72</text>
             </svg>
             <div class="chart-tooltip" id="trend-tooltip"></div>
           </div>
@@ -752,34 +796,34 @@
             <div class="emotion-section">People felt</div>
             <div class="emotion-row">
               <span class="emotion-label">Warmth</span>
-              <div class="emotion-track"><div class="emotion-fill" style="width: 78%; background: var(--accent)"></div></div>
-              <span class="bar-value">78</span>
+              <div class="emotion-track"><div class="emotion-fill" data-emotion="warmth" style="width: 78%; background: var(--accent)"></div></div>
+              <span class="bar-value" data-emotion-val="warmth">78</span>
             </div>
             <div class="emotion-row">
               <span class="emotion-label">Trust</span>
-              <div class="emotion-track"><div class="emotion-fill" style="width: 71%; background: var(--accent)"></div></div>
-              <span class="bar-value">71</span>
+              <div class="emotion-track"><div class="emotion-fill" data-emotion="trust" style="width: 71%; background: var(--accent)"></div></div>
+              <span class="bar-value" data-emotion-val="trust">71</span>
             </div>
             <div class="emotion-row">
               <span class="emotion-label">Interest</span>
-              <div class="emotion-track"><div class="emotion-fill" style="width: 64%; background: var(--accent)"></div></div>
-              <span class="bar-value">64</span>
+              <div class="emotion-track"><div class="emotion-fill" data-emotion="interest" style="width: 64%; background: var(--accent)"></div></div>
+              <span class="bar-value" data-emotion-val="interest">64</span>
             </div>
             <div class="emotion-row">
               <span class="emotion-label">Ease</span>
-              <div class="emotion-track"><div class="emotion-fill" style="width: 58%; background: var(--accent)"></div></div>
-              <span class="bar-value">58</span>
+              <div class="emotion-track"><div class="emotion-fill" data-emotion="ease" style="width: 58%; background: var(--accent)"></div></div>
+              <span class="bar-value" data-emotion-val="ease">58</span>
             </div>
             <div class="emotion-section">Watch areas</div>
             <div class="emotion-row">
               <span class="emotion-label">Tension</span>
-              <div class="emotion-track"><div class="emotion-fill" style="width: 34%; background: var(--warn)"></div></div>
-              <span class="bar-value">34</span>
+              <div class="emotion-track"><div class="emotion-fill" data-emotion="tension" style="width: 34%; background: var(--warn)"></div></div>
+              <span class="bar-value" data-emotion-val="tension">34</span>
             </div>
             <div class="emotion-row">
               <span class="emotion-label">Confusion</span>
-              <div class="emotion-track"><div class="emotion-fill" style="width: 22%; background: var(--warn)"></div></div>
-              <span class="bar-value">22</span>
+              <div class="emotion-track"><div class="emotion-fill" data-emotion="confusion" style="width: 22%; background: var(--warn)"></div></div>
+              <span class="bar-value" data-emotion-val="confusion">22</span>
             </div>
           </div>
         </div>
@@ -793,15 +837,18 @@
         <div class="panel-body">
           <div class="focus-list">
             <div class="focus-card">
-              <div class="focus-card-title">Give space before topic changes <span class="focus-chip focus-chip--work">Work on</span></div>
+              <span class="focus-chip focus-chip--work">Work on</span>
+              <div class="focus-card-title">Give space before topic changes</div>
               <p class="focus-card-text">Tension rose right after quick topic switches in 4 of your 6 alerts. Try pausing two to three seconds before moving to something new.</p>
             </div>
             <div class="focus-card">
-              <div class="focus-card-title">Re-engage around the 2-minute mark <span class="focus-chip focus-chip--work">Work on</span></div>
+              <span class="focus-chip focus-chip--work">Work on</span>
+              <div class="focus-card-title">Re-engage around the 2-minute mark</div>
               <p class="focus-card-text">Interest dips most between minutes 2 and 3. In three sessions, a follow-up question at that point brought engagement back up.</p>
             </div>
             <div class="focus-card">
-              <div class="focus-card-title">Keep your warm openings <span class="focus-chip focus-chip--strength">Strength</span></div>
+              <span class="focus-chip focus-chip--strength">Strength</span>
+              <div class="focus-card-title">Keep your warm openings</div>
               <p class="focus-card-text">Warmth peaks in your first minute of every session. Your openings work — carry that same energy into topic changes.</p>
             </div>
           </div>
@@ -819,80 +866,89 @@
 
     <div class="session-summary">
       <span><strong>12</strong> events</span>
-      <span><strong>7</strong> positive</span>
+      <span><strong>9</strong> visual</span>
+      <span><strong>3</strong> audio</span>
       <span><strong>3</strong> alerts</span>
-      <span><strong>2</strong> audio notes</span>
     </div>
 
-    <div class="filter-row" role="group" aria-label="Filter timeline">
-      <button class="chip active" data-filter="all">All</button>
-      <button class="chip" data-filter="positive">Positive</button>
-      <button class="chip" data-filter="alert">Alerts</button>
-      <button class="chip" data-filter="audio">Audio</button>
+    <div class="filter-groups">
+      <div class="filter-group" role="group" aria-label="Filter by channel">
+        <span class="filter-label">Channel</span>
+        <button class="chip active" data-filter-channel="all">All</button>
+        <button class="chip" data-filter-channel="visual">Visual · face &amp; body</button>
+        <button class="chip" data-filter-channel="audio">Audio · speech</button>
+      </div>
+      <div class="filter-group" role="group" aria-label="Filter by type">
+        <span class="filter-label">Type</span>
+        <button class="chip active" data-filter-kind="all">All</button>
+        <button class="chip" data-filter-kind="positive">Positive</button>
+        <button class="chip" data-filter-kind="alert">Alerts</button>
+        <button class="chip" data-filter-kind="note">Notes</button>
+      </div>
     </div>
 
     <div class="panel">
       <div class="panel-body">
         <div class="timeline timeline-full" id="full-timeline">
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">5:12</span>
             <span class="t-desc">Warm closing, extended goodbye</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">4:47</span>
             <span class="t-desc">Leaned in when you shared the story</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
-          <div class="timeline-event" data-kind="audio">
+          <div class="timeline-event" data-kind="note" data-channel="audio">
             <span class="t-time">4:12</span>
             <span class="t-desc">Vocal pace slowing, volume drop</span>
-            <span class="t-tag t-tag--neutral">Audio</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Audio</span><span class="t-tag t-tag--neutral">Note</span></span>
           </div>
-          <div class="timeline-event" data-kind="alert">
+          <div class="timeline-event" data-kind="alert" data-channel="audio">
             <span class="t-time">3:51</span>
             <span class="t-desc">Pace quickened, interrupted twice</span>
-            <span class="t-tag t-tag--alert">Alert</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Audio</span><span class="t-tag t-tag--alert">Alert</span></span>
           </div>
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">3:24</span>
             <span class="t-desc">Relaxed posture, open gestures</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">2:58</span>
             <span class="t-desc">Re-engaged after your follow-up question</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
-          <div class="timeline-event" data-kind="alert">
+          <div class="timeline-event" data-kind="alert" data-channel="visual">
             <span class="t-time">2:26</span>
             <span class="t-desc">Disengagement signals detected</span>
-            <span class="t-tag t-tag--alert">Alert</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--alert">Alert</span></span>
           </div>
-          <div class="timeline-event" data-kind="audio">
+          <div class="timeline-event" data-kind="note" data-channel="audio">
             <span class="t-time">2:10</span>
             <span class="t-desc">Vocal pitch dropped, shorter answers</span>
-            <span class="t-tag t-tag--neutral">Audio</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Audio</span><span class="t-tag t-tag--neutral">Note</span></span>
           </div>
-          <div class="timeline-event" data-kind="alert">
+          <div class="timeline-event" data-kind="alert" data-channel="visual">
             <span class="t-time">1:41</span>
             <span class="t-desc">Attention drifting, repeated glances away</span>
-            <span class="t-tag t-tag--alert">Alert</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--alert">Alert</span></span>
           </div>
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">1:02</span>
             <span class="t-desc">Nodding along, steady eye contact</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">0:34</span>
             <span class="t-desc">Smiled at your opening question</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
-          <div class="timeline-event" data-kind="positive">
+          <div class="timeline-event" data-kind="positive" data-channel="visual">
             <span class="t-time">0:08</span>
             <span class="t-desc">Active listening, leaning in</span>
-            <span class="t-tag t-tag--positive">Positive</span>
+            <span class="t-tags"><span class="t-tag t-tag--chan">Visual</span><span class="t-tag t-tag--positive">Positive</span></span>
           </div>
         </div>
       </div>
@@ -918,23 +974,82 @@
   const initial = location.hash.slice(1);
   if (['live', 'stats', 'timeline'].includes(initial)) showView(initial);
 
-  // ── Timeline filters ──
-  const chips = document.querySelectorAll('.chip');
-  chips.forEach(chip => chip.addEventListener('click', () => {
-    chips.forEach(c => c.classList.toggle('active', c === chip));
-    const f = chip.dataset.filter;
+  // ── Timeline filters (channel × type) ──
+  let kindFilter = 'all', channelFilter = 'all';
+
+  function applyTimelineFilters() {
     document.querySelectorAll('#full-timeline .timeline-event').forEach(ev => {
-      ev.hidden = f !== 'all' && ev.dataset.kind !== f;
+      const kindOk = kindFilter === 'all' || ev.dataset.kind === kindFilter;
+      const chanOk = channelFilter === 'all' || ev.dataset.channel === channelFilter;
+      ev.hidden = !(kindOk && chanOk);
     });
-  }));
+  }
+
+  document.querySelectorAll('[data-filter-kind]').forEach(chip =>
+    chip.addEventListener('click', () => {
+      kindFilter = chip.dataset.filterKind;
+      document.querySelectorAll('[data-filter-kind]').forEach(c => c.classList.toggle('active', c === chip));
+      applyTimelineFilters();
+    }));
+
+  document.querySelectorAll('[data-filter-channel]').forEach(chip =>
+    chip.addEventListener('click', () => {
+      channelFilter = chip.dataset.filterChannel;
+      document.querySelectorAll('[data-filter-channel]').forEach(c => c.classList.toggle('active', c === chip));
+      applyTimelineFilters();
+    }));
+
+  // ── Stats channel switch ──
+  const statsData = {
+    all: {
+      trend: [48, 52, 50, 57, 55, 61, 58, 63, 67, 64, 70, 72],
+      emotions: { warmth: 78, trust: 71, interest: 64, ease: 58, tension: 34, confusion: 22 }
+    },
+    visual: {
+      trend: [52, 55, 54, 60, 59, 64, 62, 67, 70, 68, 73, 75],
+      emotions: { warmth: 81, trust: 74, interest: 69, ease: 61, tension: 30, confusion: 18 }
+    },
+    audio: {
+      trend: [42, 47, 45, 52, 50, 56, 53, 58, 62, 59, 66, 68],
+      emotions: { warmth: 72, trust: 66, interest: 55, ease: 52, tension: 41, confusion: 29 }
+    }
+  };
+
+  const X0 = 44, X1 = 620, yOf = v => 24 + (80 - v) * 4.4;
+  let trendData = [];
+
+  function renderTrend(values) {
+    trendData = values.map((v, i) => [X0 + i * (X1 - X0) / 11, yOf(v), i + 1, v]);
+    const lineStr = trendData.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    document.getElementById('trend-line').setAttribute('points', lineStr);
+    document.getElementById('trend-area').setAttribute('points', lineStr + ' 620,200 44,200');
+    const last = trendData[trendData.length - 1];
+    const dot = document.getElementById('end-dot');
+    dot.setAttribute('cx', last[0]);
+    dot.setAttribute('cy', last[1]);
+    const lbl = document.getElementById('end-label');
+    lbl.setAttribute('y', last[1] - 11);
+    lbl.textContent = last[3];
+  }
+
+  function renderStats(channel) {
+    const d = statsData[channel];
+    renderTrend(d.trend);
+    for (const [k, v] of Object.entries(d.emotions)) {
+      document.querySelector('[data-emotion="' + k + '"]').style.width = v + '%';
+      document.querySelector('[data-emotion-val="' + k + '"]').textContent = v;
+    }
+  }
+
+  document.querySelectorAll('[data-stats-channel]').forEach(chip =>
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('[data-stats-channel]').forEach(c => c.classList.toggle('active', c === chip));
+      renderStats(chip.dataset.statsChannel);
+    }));
+
+  renderStats('all');
 
   // ── Trend chart hover ──
-  const trendData = [
-    [44, 164.8, 1, 48], [96.4, 147.2, 2, 52], [148.7, 156, 3, 50],
-    [201.1, 125.2, 4, 57], [253.5, 134, 5, 55], [305.8, 107.6, 6, 61],
-    [358.2, 120.8, 7, 58], [410.5, 98.8, 8, 63], [462.9, 81.2, 9, 67],
-    [515.3, 94.4, 10, 64], [567.6, 68, 11, 70], [620, 59.2, 12, 72]
-  ];
   const svg = document.getElementById('trend-svg');
   const tooltip = document.getElementById('trend-tooltip');
   const crosshair = document.getElementById('crosshair');
