@@ -38,8 +38,30 @@ from run_debrief import DEFAULT_MODEL, generate_debrief, validate_debrief
 
 app = Flask(__name__)
 
+
+# Hackathon-permissive CORS so any frontend origin (Peter's site, local viewers,
+# GitHub Pages) can call the API directly from the browser.
+@app.after_request
+def add_cors(resp):
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return resp
+
+
+@app.route("/api/debrief", methods=["OPTIONS"])
+def debrief_preflight():
+    return ("", 204)
+
 MOCK = os.getenv("WAVELENGTH_MOCK", "").strip() not in ("", "0", "false")
 GOLD_DEBRIEF = Path(__file__).with_name("sample-debrief.json")
+
+# Only models verified to pass schema validation reliably (tested 2-3x each).
+# The demo's live model-swap beat must never hit an unverified model.
+ALLOWED_MODELS = {
+    "anthropic-claude-haiku-4.5",   # default: ~20s, fast + solid
+    "anthropic-claude-4.6-sonnet",  # quality flex: ~30s, visibly richer
+}
 
 
 @app.get("/health")
@@ -56,6 +78,10 @@ def debrief():
     use_history = request.args.get("history", "0") not in ("0", "", "false")
     store = MemoryStore() if use_history else None
 
+    model = request.args.get("model", os.getenv("WAVELENGTH_MODEL", DEFAULT_MODEL))
+    if model not in ALLOWED_MODELS:
+        return jsonify({"error": f"model not in verified allowlist: {sorted(ALLOWED_MODELS)}"}), 400
+
     if MOCK:
         result = json.loads(GOLD_DEBRIEF.read_text(encoding="utf-8"))
         # even in mock mode, metrics are computed for real from the input
@@ -66,7 +92,7 @@ def debrief():
     else:
         try:
             history = store.history_summary() if store else None
-            result = generate_debrief(transcript, os.getenv("WAVELENGTH_MODEL", DEFAULT_MODEL), history)
+            result = generate_debrief(transcript, model, history)
         except (RuntimeError, ValueError) as exc:
             return jsonify({"error": str(exc)}), 502
 
