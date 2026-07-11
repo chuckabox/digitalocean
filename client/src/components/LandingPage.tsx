@@ -60,8 +60,8 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
 
       {/* Core Features */}
       <section className="w-[100vw] relative left-[50%] right-[50%] -mx-[50vw] bg-paper-2 py-24 px-7 overflow-hidden">
-        <div className="absolute inset-0 -z-10 pointer-events-none opacity-[0.06] flex items-center justify-center" aria-hidden="true">
-          <img src="/wave.svg" alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 -z-10 pointer-events-none opacity-20 flex items-center justify-center" aria-hidden="true">
+          <DotLottiePlayer src="/secondwave.lottie" autoplay loop style={{ width: '100%', height: '100%' }} />
         </div>
         <div className="max-w-[1160px] mx-auto">
           <h2 className="font-sans text-[28px] md:text-[32px] tracking-tight font-medium text-ink mb-16 text-center">
