@@ -1,11 +1,12 @@
 # Debrief Brain — Output Schema + Prompt Design
 
-> **LIVE on DO App Platform (mock mode): https://wavelength-brain-37j5z.ondigitalocean.app**
-> `GET /health` · `POST /api/debrief` · `GET /api/progress`. Peter: point the UI straight at
-> this, no local server needed. Deploys from `connor-main` `debrief/` (git source = manual
-> redeploy via DO console/API after pushes, not automatic). When the model access key exists,
-> set `DIGITAL_OCEAN_MODEL_ACCESS_KEY` and remove `WAVELENGTH_MOCK` in the app's env vars for
-> real inference.
+> **LIVE on DO App Platform with REAL inference: https://wavelength-brain-37j5z.ondigitalocean.app**
+> `GET /health` · `POST /api/debrief?model=<id>&history=1` · `GET /api/progress`. CORS is open,
+> so any frontend origin can call it directly. `?model=` accepts only the schema-verified pair:
+> `anthropic-claude-haiku-4.5` (default, ~20s) and `anthropic-claude-4.6-sonnet` (~30s, sharper).
+> `viewer.html` is a working reference UI against this API (offline fixture + live + model swap).
+> Deploys from `connor-main` `debrief/` (git source = manual redeploy via DO console/API after
+> pushes, not automatic).
 
 > The "brain" of the product: takes a speaker-labelled conversation transcript and produces the
 > structured debrief the UI renders. This is the layer Dinil's pipeline calls and Peter's UI
