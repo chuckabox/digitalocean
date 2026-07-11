@@ -303,8 +303,8 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               <div className="flex flex-col">
                 {[
                   { time: '0:18', desc: 'Vocal pace slowing, volume drop', chan: 'Audio', kind: 'Note', kindVariant: 'default' as const },
-                  { time: '0:12', desc: 'Disengagement signals detected', chan: 'Visual', kind: 'Alert', kindVariant: 'alert' as const },
-                  { time: '0:08', desc: 'Active listening, leaning in', chan: 'Visual', kind: 'Positive', kindVariant: 'positive' as const },
+                  { time: '0:12', desc: 'Disengagement signals detected', chan: 'Visual', kind: 'Friction', kindVariant: 'alert' as const },
+                  { time: '0:08', desc: 'Active listening, leaning in', chan: 'Visual', kind: 'Highlight', kindVariant: 'positive' as const },
                 ].map((ev, i, arr) => (
                   <div
                     key={ev.time}

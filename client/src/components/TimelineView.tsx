@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { sessionEvents, isoDate, addDays, type SessionEvent } from '../data/sessions'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { DatePicker } from './ui/date-picker'
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const today = new Date()
@@ -11,13 +12,14 @@ type KindFilter = 'all' | 'positive' | 'alert' | 'note'
 type ChannelFilter = 'all' | 'visual' | 'audio'
 
 const KIND_MAP: Record<string, { label: string; variant: 'positive' | 'alert' | 'default' }> = {
-  positive: { label: 'Positive', variant: 'positive' },
-  alert: { label: 'Alert', variant: 'alert' },
-  note: { label: 'Note', variant: 'default' },
+  positive: { label: 'Highlight', variant: 'positive' },
+  alert: { label: 'Friction', variant: 'alert' },
+  note: { label: 'Observation', variant: 'default' },
 }
 
 export default function TimelineView() {
   const [selectedDate, setSelectedDate] = useState(isoDate(today))
+  const [stripEndDate, setStripEndDate] = useState(isoDate(today))
   const [kindFilter, setKindFilter] = useState<KindFilter>('all')
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
 
@@ -39,7 +41,7 @@ export default function TimelineView() {
       total: evts.length,
       visual: evts.filter(e => e.channel === 'visual').length,
       audio: evts.filter(e => e.channel === 'audio').length,
-      alerts: evts.filter(e => e.kind === 'alert').length,
+      friction: evts.filter(e => e.kind === 'alert').length,
     }
   }, [session])
 
@@ -52,90 +54,103 @@ export default function TimelineView() {
   }, [session, selectedDate])
 
   return (
-    <section>
-      <div className="mb-[26px]">
-        <h2 className="text-[26px] font-light tracking-tight leading-[1.25]">Session timeline</h2>
-        <p className="font-mono text-xs text-ink-3 mt-1">{dateLabel}</p>
+    <section className="pb-24">
+      {/* Header */}
+      <div className="mb-10">
+        <h2 className="font-sans text-[28px] md:text-[32px] tracking-tight font-medium text-ink mb-2">
+          Session timeline
+        </h2>
+        <p className="font-mono text-xs text-ink-3">{dateLabel}</p>
       </div>
 
-      {/* Day picker */}
-      <div className="flex items-center gap-2 mb-[22px] flex-wrap">
-        {Array.from({ length: 7 }, (_, i) => {
-          const d = addDays(today, i - 6)
-          const iso = isoDate(d)
-          const hasSession = !!sessionEvents[iso]
-          const isActive = iso === selectedDate
-          return (
-            <button
-              key={iso}
-              onClick={() => setSelectedDate(iso)}
-              className={`font-sans flex flex-col items-center gap-0.5 py-2 px-3 pb-1.5 border rounded-[2px] cursor-pointer min-w-[52px] ${
-                isActive
-                  ? 'bg-ink border-ink'
-                  : 'bg-transparent border-rule hover:border-ink-3'
-              }`}
-            >
-              <span className={`text-[10px] font-semibold uppercase tracking-[0.06em] ${isActive ? 'text-paper opacity-70' : 'text-ink-3'}`}>
-                {DOW[d.getDay()]}
-              </span>
-              <span className={`text-base font-medium leading-tight ${isActive ? 'text-paper' : 'text-ink'}`}>
-                {d.getDate()}
-              </span>
-              <span
-                className={`w-1 h-1 rounded-full mt-0.5 ${
-                  isActive
-                    ? hasSession ? 'bg-paper' : 'bg-transparent'
-                    : hasSession ? 'bg-accent' : 'bg-transparent'
-                }`}
-              />
-            </button>
-          )
-        })}
-        <div className="w-px h-9 bg-rule mx-1" />
-        <input
-          type="date"
-          value={selectedDate}
-          max={isoDate(today)}
-          onChange={e => { if (e.target.value) setSelectedDate(e.target.value) }}
-          className="font-mono text-xs text-ink-2 bg-transparent border border-rule rounded-[2px] py-2 px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-        />
-      </div>
-
-      {/* Summary */}
-      {summary && (
-        <div className="flex gap-6 flex-wrap font-mono text-xs text-ink-2 mb-[22px]">
-          <span><strong className="text-ink font-medium">{summary.total}</strong> events</span>
-          <span><strong className="text-ink font-medium">{summary.visual}</strong> visual</span>
-          <span><strong className="text-ink font-medium">{summary.audio}</strong> audio</span>
-          <span><strong className="text-ink font-medium">{summary.alerts}</strong> alerts</span>
+      {/* Control Panel (Calendar & Filters) */}
+      <div className="bg-white rounded-xl p-8 mb-8">
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 w-full">
+          {/* 7 Day Strip */}
+          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 w-full md:w-auto">
+            {Array.from({ length: 7 }, (_, i) => {
+              const stripEndObj = new Date(stripEndDate + 'T12:00:00')
+              const d = addDays(stripEndObj, i - 6)
+              const iso = isoDate(d)
+              const hasSession = !!sessionEvents[iso]
+              const isActive = iso === selectedDate
+              return (
+                <button
+                  key={iso}
+                  onClick={() => setSelectedDate(iso)}
+                  className={`font-sans flex flex-col items-center gap-1 py-2.5 px-3 pb-2 border rounded-xl cursor-pointer min-w-[56px] transition-all ${
+                    isActive
+                      ? 'bg-ink border-ink shadow-sm scale-105'
+                      : 'bg-transparent border-rule hover:border-ink-3 hover:bg-[#FAFAFA]'
+                  }`}
+                >
+                  <span className={`text-[10px] font-semibold uppercase tracking-[0.06em] ${isActive ? 'text-paper opacity-70' : 'text-ink-3'}`}>
+                    {DOW[d.getDay()]}
+                  </span>
+                  <span className={`text-[17px] font-medium leading-tight ${isActive ? 'text-paper' : 'text-ink'}`}>
+                    {d.getDate()}
+                  </span>
+                  <span
+                    className={`w-1 h-1 rounded-full mt-0.5 ${
+                      isActive
+                        ? hasSession ? 'bg-paper' : 'bg-transparent'
+                        : hasSession ? 'bg-accent' : 'bg-transparent'
+                    }`}
+                  />
+                </button>
+              )
+            })}
+          </div>
+          
+          <div className="flex items-center shrink-0">
+            <DatePicker
+              value={selectedDate}
+              max={isoDate(today)}
+              onChange={(d) => {
+                setSelectedDate(d)
+                setStripEndDate(d)
+              }}
+            />
+          </div>
         </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex gap-8 mb-6 flex-wrap">
-        <FilterGroup label="Channel" options={[
-          { key: 'all', label: 'All' },
-          { key: 'visual', label: 'Visual · face & body' },
-          { key: 'audio', label: 'Audio · speech' },
-        ]} active={channelFilter} onChange={v => setChannelFilter(v as ChannelFilter)} />
-        <FilterGroup label="Type" options={[
-          { key: 'all', label: 'All' },
-          { key: 'positive', label: 'Positive' },
-          { key: 'alert', label: 'Alerts' },
-          { key: 'note', label: 'Notes' },
-        ]} active={kindFilter} onChange={v => setKindFilter(v as KindFilter)} />
       </div>
 
       {/* Event list */}
-      <div className="border-t-[1.5px] border-rule-strong pt-[18px]">
+      <div className="bg-white rounded-xl p-8 min-h-[400px]">
+        {/* Header: Summary & Filters */}
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-6 pb-6 border-b border-rule">
+          {summary ? (
+            <div className="flex gap-6 flex-wrap font-mono text-xs text-ink-2">
+              <span><strong className="text-ink font-medium text-[13px]">{summary.total}</strong> events</span>
+              <span><strong className="text-ink font-medium text-[13px]">{summary.visual}</strong> visual</span>
+              <span><strong className="text-ink font-medium text-[13px]">{summary.audio}</strong> audio</span>
+              <span><strong className="text-alert font-medium text-[13px]">{summary.friction}</strong> friction</span>
+            </div>
+          ) : <div />}
+
+          <div className="flex gap-8 flex-wrap xl:justify-end">
+            <FilterGroup label="Channel" options={[
+              { key: 'all', label: 'All' },
+              { key: 'visual', label: 'Visual' },
+              { key: 'audio', label: 'Audio' },
+            ]} active={channelFilter} onChange={v => setChannelFilter(v as ChannelFilter)} />
+            <FilterGroup label="Type" options={[
+              { key: 'all', label: 'All' },
+              { key: 'positive', label: 'Highlights' },
+              { key: 'alert', label: 'Friction' },
+              { key: 'note', label: 'Observations' },
+            ]} active={kindFilter} onChange={v => setKindFilter(v as KindFilter)} />
+          </div>
+        </div>
         {!session ? (
-          <div className="text-center py-10 text-ink-3 text-sm">
-            <div>—</div>
-            <div className="font-mono text-[11px] uppercase tracking-[0.06em] mt-2">No session recorded this day</div>
+          <div className="h-full flex flex-col items-center justify-center text-center py-20 text-ink-3">
+            <div className="text-[24px] mb-2 font-light text-ink-3">—</div>
+            <div className="font-mono text-[12px] uppercase tracking-[0.06em]">No session recorded this day</div>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="text-center py-10 text-ink-3 text-sm">
-            <div className="font-mono text-[11px] uppercase tracking-[0.06em]">No events match filters</div>
+          <div className="h-full flex flex-col items-center justify-center text-center py-20 text-ink-3">
+            <div className="font-mono text-[12px] uppercase tracking-[0.06em]">No events match filters</div>
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
@@ -146,19 +161,23 @@ export default function TimelineView() {
                   <motion.div
                     key={`${ev.time}-${ev.desc}`}
                     layout
-                    initial={{ opacity: 0, y: 4 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.2, delay: i * 0.02 }}
-                    className={`grid grid-cols-[46px_1fr_auto] gap-3 py-[13px] items-center ${
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3, delay: i * 0.03, ease: 'easeOut' }}
+                    className={`grid grid-cols-[56px_1fr_auto] gap-6 py-5 items-center group transition-colors hover:bg-[#FAFAFA] -mx-4 px-4 rounded-xl ${
                       i < filteredEvents.length - 1 ? 'border-b border-rule' : ''
-                    } ${i === 0 ? 'pt-0' : ''} ${i === filteredEvents.length - 1 ? 'pb-0' : ''}`}
+                    }`}
                   >
-                    <span className="font-mono text-xs text-ink-3">{ev.time}</span>
-                    <span className="text-[13px] leading-normal">{ev.desc}</span>
-                    <span className="flex gap-1.5">
-                      <Badge size="sm" className="border border-rule capitalize">{ev.channel}</Badge>
-                      <Badge variant={kindInfo.variant} size="sm">{kindInfo.label}</Badge>
+                    <span className="font-mono text-[13px] font-medium text-ink-3 group-hover:text-ink transition-colors">{ev.time}</span>
+                    <span className="font-sans text-[15px] text-ink-2 leading-relaxed">{ev.desc}</span>
+                    <span className="flex items-center gap-2 w-[180px] justify-end">
+                      <Badge size="sm" className="bg-white border border-rule shadow-[0_1px_2px_rgba(0,0,0,0.02)] text-ink capitalize px-2 py-0.5 rounded-[4px]">
+                        {ev.channel}
+                      </Badge>
+                      <Badge size="sm" variant={kindInfo.variant} className={`shadow-[0_1px_2px_rgba(0,0,0,0.02)] border px-2 py-0.5 rounded-[4px] ${ev.kind === 'positive' ? 'border-positive/20' : ev.kind === 'alert' ? 'border-alert/20' : 'border-rule'}`}>
+                        {kindInfo.label}
+                      </Badge>
                     </span>
                   </motion.div>
                 )
@@ -179,12 +198,13 @@ function FilterGroup({ label, options, active, onChange }: {
 }) {
   return (
     <div className="flex items-center gap-2 flex-wrap" role="group" aria-label={`Filter by ${label.toLowerCase()}`}>
-      <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-3 mr-0.5">{label}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-3 mr-2">{label}</span>
       {options.map(opt => (
         <Button
           key={opt.key}
           variant={active === opt.key ? 'primary' : 'default'}
           size="sm"
+          className="rounded-full px-5"
           onClick={() => onChange(opt.key)}
         >
           {opt.label}

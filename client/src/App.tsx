@@ -25,8 +25,18 @@ const MODAL_CONTENT = {
   }
 }
 
+const getInitialView = (): View => {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.slice(1) as View
+    if (['home', 'live', 'stats', 'timeline'].includes(hash)) {
+      return hash
+    }
+  }
+  return 'home'
+}
+
 export default function App() {
-  const [view, setView] = useState<View>('home')
+  const [view, setView] = useState<View>(getInitialView)
   const [modal, setModal] = useState<'privacy' | 'terms' | null>(null)
 
   useEffect(() => {

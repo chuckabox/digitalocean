@@ -54,11 +54,11 @@ export default function StatsView() {
         <StatTile label="Overall perception" value={<>{last.score}<span className="text-[18px] font-normal text-ink-3 ml-[4px]">/100</span></>} delta="+8 vs first 4 sessions" deltaType="up" />
         <StatTile label="Sessions analyzed" value="12" delta="last 30 days" deltaType="flat" />
         <StatTile label="Average engagement" value={<>64<span className="text-[18px] font-normal text-ink-3 ml-[4px]">%</span></>} delta="+5 vs last month" deltaType="up" />
-        <StatTile label="Alerts per session" value="2.1" delta="−0.8, improving" deltaType="up" />
+        <StatTile label="Friction per session" value="2.1" delta="−0.8, improving" deltaType="up" />
       </div>
 
       {/* Trend Chart */}
-      <div className="bg-white rounded-xl p-8 border border-rule shadow-sm mb-16">
+      <div className="bg-white rounded-xl p-8 mb-16">
         <div className="mb-8">
           <h3 className="font-sans text-[20px] font-medium text-ink mb-1">Perception score over sessions</h3>
           <p className="text-[14px] text-ink-3">12 sessions</p>
@@ -123,7 +123,7 @@ export default function StatsView() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-8">
         
         {/* Emotions */}
-        <div className="bg-white rounded-xl p-8 border border-rule shadow-sm">
+        <div className="bg-white rounded-xl p-8">
           <div className="mb-8">
             <h3 className="font-sans text-[20px] font-medium text-ink mb-1">Emotions you evoke</h3>
             <p className="text-[14px] text-ink-3">avg across sessions</p>
@@ -143,7 +143,7 @@ export default function StatsView() {
         </div>
 
         {/* Focus cards */}
-        <div className="bg-white rounded-xl p-8 border border-rule shadow-sm flex flex-col">
+        <div className="bg-white rounded-xl p-8 flex flex-col">
           <div className="mb-8">
             <h3 className="font-sans text-[20px] font-medium text-ink mb-1">What to focus on</h3>
             <p className="text-[14px] text-ink-3">from your last 12 sessions</p>
@@ -153,7 +153,7 @@ export default function StatsView() {
             <FocusCard 
               type="work" 
               title="Give space before topic changes" 
-              text="Tension rose right after quick topic switches in 4 of your 6 alerts. Try pausing two to three seconds before moving to something new." 
+              text="Tension rose right after quick topic switches in 4 of your 6 friction events. Try pausing two to three seconds before moving to something new." 
             />
             <FocusCard 
               type="work" 
@@ -181,7 +181,7 @@ function StatTile({ label, value, delta, deltaType }: {
 }) {
   const deltaColor = { up: 'text-positive', down: 'text-alert', flat: 'text-ink-3' }[deltaType]
   return (
-    <div className="bg-white rounded-xl p-6 md:p-8 border border-rule shadow-sm flex flex-col transition-shadow hover:shadow-md">
+    <div className="bg-white rounded-xl p-6 md:p-8 flex flex-col transition-transform duration-300 hover:-translate-y-1">
       <div className="text-[12px] font-semibold uppercase tracking-[0.09em] text-ink-3 mb-4">{label}</div>
       <div className="font-sans text-[42px] md:text-[48px] tracking-tight font-light leading-none mb-4 text-ink">{value}</div>
       <div className={`font-mono text-[12px] mt-auto ${deltaColor}`}>{delta}</div>
@@ -210,15 +210,12 @@ function EmotionRow({ label, value, color }: { label: string; value: number; col
 function FocusCard({ type, title, text }: { type: 'work' | 'strength'; title: string; text: string }) {
   const isWork = type === 'work'
   return (
-    <div className={`relative rounded-xl p-6 border transition-all duration-300 hover:shadow-md ${isWork ? 'bg-[#FAFAFA] border-rule hover:border-alert/30' : 'bg-[#FAFAFA] border-rule hover:border-positive/30'}`}>
-      <Badge
-        variant={isWork ? 'warn' : 'positive'}
-        size="sm"
-        className="absolute top-6 right-6 uppercase tracking-[0.05em] shadow-sm"
-      >
-        {isWork ? 'Work on' : 'Strength'}
-      </Badge>
-      <div className="font-sans text-[16px] font-semibold text-ink mb-2 pr-[90px]">{title}</div>
+    <div className="rounded-xl p-6 transition-colors duration-300 bg-[#FAFAFA] hover:bg-[#F5F5F5]">
+      <div className={`font-mono text-[11px] font-semibold uppercase tracking-[0.09em] mb-3 flex items-center gap-2 ${isWork ? 'text-alert' : 'text-positive'}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+        {isWork ? 'Area to improve' : 'Core strength'}
+      </div>
+      <div className="font-sans text-[16px] font-semibold text-ink mb-2">{title}</div>
       <p className="font-sans text-[15px] text-ink-2 leading-relaxed">{text}</p>
     </div>
   )
