@@ -48,10 +48,10 @@ export function considerNudge(
   const dipHoldS = opts.dipHoldS ?? DEFAULTS.dipHoldS;
   const engagement = frame.engagement ?? 0.5;
 
-  let ewma = state.ewma;
+  let ewma = state.ewma ?? engagement;
   let varianceEma = state.varianceEma;
-  if (ewma == null) {
-    ewma = engagement;
+  if (state.ewma == null) {
+    // first frame — seed baseline
   } else {
     const alpha = 0.08;
     const diff = engagement - ewma;

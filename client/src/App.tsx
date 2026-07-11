@@ -8,6 +8,12 @@ import StatsView from './components/StatsView';
 import TimelineView from './components/TimelineView';
 import { SessionProvider, useSession } from './session/SessionContext';
 
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+};
+
 const MODAL_CONTENT = {
   privacy: {
     title: 'Privacy FAQ',
@@ -17,12 +23,6 @@ const MODAL_CONTENT = {
     title: 'Terms of Service',
     content: 'Wavelength is an exploratory tool for personal insight, not medical diagnosis or lie detection. By using Wavelength, you explicitly agree to obtain active two-party consent before utilizing the platform in any live conversations.'
   }
-};
-
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
 };
 
 function AppShell() {
