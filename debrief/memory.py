@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -36,7 +37,22 @@ LOWER_IS_BETTER = {"user_talk_ratio", "longest_user_monologue_seconds"}
 HIGHER_IS_BETTER = {"questions_asked_by_user"}
 
 
-class MemoryStore:
+def _session_record(debrief: dict, conversation_id: str | None, n: int) -> dict:
+    return {
+        "conversation_id": conversation_id or f"session-{n}",
+        "stored_at": int(time.time()),
+        "metrics": debrief.get("metrics", {}),
+        "pattern_labels": [p.get("label", "") for p in debrief.get("patterns", [])],
+        "moment_gists": [
+            {"t": m.get("t"), "why": m.get("why_it_matters", ""), "source": m.get("source", "audio")}
+            for m in debrief.get("moments", [])
+        ],
+    }
+
+
+class _LocalStore:
+    """JSON-file store: demo-resilient, works offline (fallback rung 3)."""
+
     def __init__(self, path: Path | str = DEFAULT_STORE):
         self.path = Path(path)
         self.sessions: list[dict] = []
@@ -44,18 +60,7 @@ class MemoryStore:
             self.sessions = json.loads(self.path.read_text(encoding="utf-8"))
 
     def add(self, debrief: dict, conversation_id: str | None = None) -> None:
-        self.sessions.append(
-            {
-                "conversation_id": conversation_id or f"session-{len(self.sessions) + 1}",
-                "stored_at": int(time.time()),
-                "metrics": debrief.get("metrics", {}),
-                "pattern_labels": [p.get("label", "") for p in debrief.get("patterns", [])],
-                "moment_gists": [
-                    {"t": m.get("t"), "why": m.get("why_it_matters", ""), "source": m.get("source", "audio")}
-                    for m in debrief.get("moments", [])
-                ],
-            }
-        )
+        self.sessions.append(_session_record(debrief, conversation_id, len(self.sessions) + 1))
         self.path.write_text(json.dumps(self.sessions, indent=2), encoding="utf-8")
 
     # ---- recurring patterns ------------------------------------------------
@@ -108,6 +113,76 @@ class MemoryStore:
             lines.append(f"- {key}: {trail} ({info['verdict']}). Acknowledge improvement if real.")
 
         return "\n".join(lines)
+
+
+class _PgStore(_LocalStore):
+    """DO Managed Postgres store: persistent across deploys (the production shape).
+
+    Uses the sessions table from schema.sql (debrief JSONB + metrics JSONB);
+    recurring/progress/history logic is shared with the local store by loading
+    rows into the same in-memory session shape.
+    """
+
+    def __init__(self, dsn: str):
+        import psycopg2  # only needed when DATABASE_URL is set
+
+        self._psycopg2 = psycopg2
+        self.dsn = dsn
+        self._ensure_tables()
+        self.sessions = self._load()
+
+    def _conn(self):
+        return self._psycopg2.connect(self.dsn)
+
+    def _ensure_tables(self) -> None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id BIGSERIAL PRIMARY KEY,
+                    conversation_id TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    metrics JSONB NOT NULL,
+                    debrief JSONB NOT NULL
+                )
+                """
+            )
+
+    def _load(self) -> list[dict]:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute("SELECT conversation_id, EXTRACT(EPOCH FROM created_at)::bigint, metrics, debrief FROM sessions ORDER BY created_at")
+            rows = cur.fetchall()
+        sessions = []
+        for conv_id, ts, metrics, debrief in rows:
+            rec = _session_record(debrief, conv_id, len(sessions) + 1)
+            rec["stored_at"] = ts
+            rec["metrics"] = metrics
+            sessions.append(rec)
+        return sessions
+
+    def add(self, debrief: dict, conversation_id: str | None = None) -> None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO sessions (conversation_id, metrics, debrief) VALUES (%s, %s, %s)",
+                (
+                    conversation_id or f"session-{len(self.sessions) + 1}",
+                    json.dumps(debrief.get("metrics", {})),
+                    json.dumps(debrief),
+                ),
+            )
+        self.sessions = self._load()
+
+
+def MemoryStore(path: Path | str = DEFAULT_STORE):
+    """Factory: DO Managed Postgres when DATABASE_URL is set, else local JSON.
+
+    Call sites just use MemoryStore() and get persistence automatically once
+    the database env var lands on the app.
+    """
+    dsn = os.getenv("DATABASE_URL")
+    if dsn:
+        return _PgStore(dsn)
+    return _LocalStore(path)
 
 
 def _main(argv: list[str]) -> int:
