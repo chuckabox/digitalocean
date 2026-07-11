@@ -55,6 +55,24 @@ function formatTime(t: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/** Engagement (0..1) from the frame nearest at-or-before time `t`. Frames are t-sorted. */
+function engagementAt(frames: SignalFrame[], t: number): number | null {
+  if (frames.length === 0) return null;
+  let lo = 0;
+  let hi = frames.length - 1;
+  let best = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (frames[mid].t <= t) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return frames[best]?.engagement ?? null;
+}
+
 export default function LiveView({ onGoToTimeline }: LiveViewProps) {
   const {
     sessionId,
@@ -65,6 +83,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     pushNudge,
     registerCleanup,
     startedAtMs,
+    transcript,
     appendTranscript,
   } = useSession();
 
@@ -87,6 +106,14 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
   const nudgeInFlight = useRef(false);
   const framesRef = useRef(frames);
   framesRef.current = frames;
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
+
+  // Look up engagement at each line's timestamp when the line arrives (not every
+  // frame), so the user can see the reading at the moment they said it.
+  const transcriptRows = useMemo(
+    () => transcript.map((turn) => ({ turn, engagement: engagementAt(framesRef.current, turn.t) })),
+    [transcript],
+  );
 
   const stopTracks = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -105,6 +132,12 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
   useEffect(() => {
     engineRef.current = createEngineState();
   }, [sessionId]);
+
+  // Keep the transcript feed pinned to the newest line as it streams in.
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [transcript.length]);
 
   const fireNudge = useCallback(
     async (confidence: NudgeResponse['confidence'], evidence: string[], t: number) => {
@@ -397,6 +430,55 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
             onChange={handleFileChange}
             className="hidden"
           />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Transcript</CardTitle>
+              <CardDescription>
+                {transcriptRows.length > 0
+                  ? 'live captions · engagement at each line'
+                  : 'live captions (Chrome)'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                ref={transcriptScrollRef}
+                className="max-h-[220px] overflow-y-auto flex flex-col pr-1"
+              >
+                {transcriptRows.length === 0 ? (
+                  <p className="text-[13px] text-ink-3">
+                    Listening… your words appear here with the engagement reading at the moment you
+                    said them, so you can see where a conversation slipped.
+                  </p>
+                ) : (
+                  transcriptRows.map(({ turn, engagement }, i, arr) => {
+                    const engPct = engagement == null ? null : Math.round(engagement * 100);
+                    const variant =
+                      engPct == null ? 'accent' : engPct < 40 ? 'alert' : engPct >= 55 ? 'positive' : 'accent';
+                    return (
+                      <div
+                        key={`${turn.t}-${i}`}
+                        className={`grid grid-cols-[46px_1fr_auto] gap-3 py-[11px] items-baseline ${i < arr.length - 1 ? 'border-b border-rule' : ''} ${i === 0 ? 'pt-0' : ''}`}
+                      >
+                        <span className="font-mono text-xs text-ink-3">{formatTime(turn.t)}</span>
+                        <span className="text-[13px] leading-normal">
+                          {turn.speaker === 'partner' && (
+                            <span className="font-mono text-[10px] text-ink-3 mr-1.5">them</span>
+                          )}
+                          {turn.text}
+                        </span>
+                        {engPct != null && (
+                          <Badge variant={variant} size="sm" title="engagement at this moment">
+                            {engPct}%
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="flex flex-col gap-[26px]">
