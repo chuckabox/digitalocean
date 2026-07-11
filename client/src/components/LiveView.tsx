@@ -261,14 +261,10 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-3.5">
-                  {[
-                    { label: 'Happiness', width: 35, variant: 'positive' },
-                    { label: 'Tension', width: 62, variant: 'alert' },
-                    { label: 'Interest', width: 28, variant: 'accent' },
-                  ].map((s) => (
-                    <div key={s.label} className="grid grid-cols-[76px_1fr_40px] items-center gap-2.5">
+                  {signalRows.map((s) => (
+                    <div key={s.label} className="grid grid-cols-[88px_1fr_40px] items-center gap-2.5">
                       <span className="text-[13px] text-ink-2">{s.label}</span>
-                      <BarTrack width={s.width} variant={s.variant} />
+                      <BarTrack width={s.width} variant={s.variant as 'positive' | 'alert' | 'accent'} />
                       <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">{s.width}%</span>
                     </div>
                   ))}

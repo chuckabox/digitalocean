@@ -41,6 +41,11 @@ const EnvSchema = z.object({
 
   // Comma-separated list of allowed browser origins.
   CORS_ORIGIN: z.preprocess(emptyToUndefined, z.string().default('http://localhost:5173')),
+
+  // Absolute or relative path to the Vite client build (Phase 4 static serve).
+  CLIENT_DIST: z.preprocess(emptyToUndefined, z.string().optional()),
+  // Absolute path to Drizzle SQL migrations folder (Docker sets this).
+  MIGRATIONS_DIR: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

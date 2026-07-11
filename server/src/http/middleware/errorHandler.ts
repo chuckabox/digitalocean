@@ -22,6 +22,20 @@ export function errorHandler(
     logger.error({ err, requestId: req.id }, 'Unhandled error');
   }
 
+  if (appErr.code !== 'internal_error') {
+    logger.warn(
+      {
+        requestId: req.id,
+        code: appErr.code,
+        status: appErr.statusCode,
+        path: req.path,
+        method: req.method,
+        message: appErr.message,
+      },
+      'Request failed',
+    );
+  }
+
   const envelope: ErrorEnvelope = {
     error: {
       code: appErr.code,

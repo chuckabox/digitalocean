@@ -2,14 +2,21 @@
 
 Instructions for coding agents working in this repo.
 
+## Start here
+
+1. **[STATUS.md](./STATUS.md)** — what exists, what's left, locked decisions.
+2. **[docs/agent-handoff.md](./docs/agent-handoff.md)** — compact handoff for deploy / next work.
+3. **[docs/backend-plan.md](./docs/backend-plan.md)** — phased backend SoT.
+4. **[docs/phase-4.md](./docs/phase-4.md)** — how to deploy to App Platform.
+
 ## What we're building
 
 **Wavelength** — a consented social co-pilot for one-on-one conversations. It reads
 the *trajectory* of a conversation from the webcam and suggests, never diagnoses:
 discreet hedged nudges live, an annotated timeline + AI debrief afterward.
 
-This is a **one-day hackathon build**. The full plan (architecture, hour-by-hour
-schedule, demo script) is the source of truth: **[BUILD_PLAN.md](./BUILD_PLAN.md)**.
+This is a **one-day hackathon build**. Day schedule / demo script:
+**[BUILD_PLAN.md](./BUILD_PLAN.md)** (paths/contract superseded by backend-plan — use `/v1`).
 
 ## Framing (read this)
 
@@ -37,24 +44,31 @@ that's the point. Show *capability* ("the machine reads and reasons"), never cla
 
 ## Where things are
 
-- **[BUILD_PLAN.md](./BUILD_PLAN.md)** — the plan. Read this first.
-- **[docs/vision.md](./docs/vision.md)** — the public product vision (neurodivergent framing).
-- **[docs/north-star.md](./docs/north-star.md)** — the real vision: machine perception of people.
-- **[docs/hackathon-goals.md](./docs/hackathon-goals.md)** — judging criteria & target prizes.
-- **[docs/backend-plan.md](./docs/backend-plan.md)** — the production backend build plan (phases, stack).
-- **[docs/digitalocean.md](./docs/digitalocean.md)** — DigitalOcean capabilities cheat-sheet.
-- **`.agents/skills/digitalocean-ai/`** — installed DO Inference skill (deep reference).
+- **[STATUS.md](./STATUS.md)** — team SoT. **Read first.**
+- **[docs/agent-handoff.md](./docs/agent-handoff.md)** — current reality + deploy/MCP notes.
+- **[docs/backend-plan.md](./docs/backend-plan.md)** — production backend plan (phases, stack).
+- **[docs/phase-4.md](./docs/phase-4.md)** — harden + deploy implementation guide.
+- **[BUILD_PLAN.md](./BUILD_PLAN.md)** — day schedule + demo script.
+- **[docs/vision.md](./docs/vision.md)** · **[docs/north-star.md](./docs/north-star.md)** ·
+  **[docs/hackathon-goals.md](./docs/hackathon-goals.md)**
+- **[docs/digitalocean.md](./docs/digitalocean.md)** — DO capabilities + MCP endpoints.
+- **`.agents/skills/digitalocean-ai/`** — DO Inference skill (deep reference).
+
+> **Obsolete — do not follow:** [docs/INTEGRATION.md](./docs/INTEGRATION.md),
+> [docs/ALIGNMENT.md](./docs/ALIGNMENT.md), [docs/demo-runsheet.md](./docs/demo-runsheet.md)
+> (pre-pivot Python `debrief/` era). The old `debrief/` backend has been removed.
 
 ## Architecture
 
-Production build, good fundamentals. One monorepo, **one deployable**: a Node/Express
-(TypeScript) service that serves the React client *and* owns all DigitalOcean access —
-the inference key never reaches the browser. Perception runs **client-side** (MediaPipe);
-the LLM and Postgres live behind the server. Full phased plan (stack, gates, spike):
-**[docs/backend-plan.md](./docs/backend-plan.md)**.
+One monorepo, **one deployable**: Express (TypeScript) serves the React client *and* owns
+all DigitalOcean access — the inference key never reaches the browser. Perception is
+**client-side** (MediaPipe); LLM + Postgres sit behind the server.
 
-> The old `debrief/` Python backend was a throwaway test and has been removed. We build
-> the real backend from first principles — do not reference its contract.
+> The old `debrief/` Python backend was a throwaway test and has been removed. Do not
+> reference its contract. Fresh contract is `/v1` under `shared/contracts/`.
+
+**Build status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅
+**live** — https://wavelength-wxut4.ondigitalocean.app. Team status: [STATUS.md](./STATUS.md).
 
 ```
 ┌── Browser · React + MediaPipe (raw video/audio never leaves) ───────┐
@@ -64,53 +78,72 @@ the LLM and Postgres live behind the server. Full phased plan (stack, gates, spi
                                            ▼
 ┌── DO App Platform · Express (TS) · :8080 ─────────────────────────────┐
 │  routes (zod) → services → repositories (Drizzle) → clients (Gradient)│
-│  serves client build · holds DO key · CORS locked · canned fallbacks  │
+│  serves client build · holds DO key · CORS locked · rate limits       │
+│  canned inference fallbacks · migrate on container start              │
 └──────────┬──────────────────────────────────┬────────────────────────┘
            ▼                                   ▼
    DO Gradient AI Inference           DO Managed Postgres (Drizzle)
 ```
 
-**Layering (each layer knows only the one below):** HTTP routes validate with Zod →
-services hold domain logic + deterministic metrics → repositories are the only place SQL
-lives (Drizzle) → clients wrap DO Gradient (chat / SSE stream / forced tool-call).
-`shared/` holds the Zod schemas + inferred types = the wire contract client and server
-agree on.
+**Layering:** HTTP routes validate with Zod → services (metrics / nudge / debrief) →
+repositories (Drizzle only) → `clients/gradient` (`chat` / `stream` / `structured`).
+`shared/` = wire contract (build to `dist/` before server typecheck/test).
 
-## File structure (target)
+### Gradient client (`server/src/clients/gradient.ts`)
+
+| Function | Use |
+|---|---|
+| `chat({tier, prompt/messages, …})` | one-shot completions (default tier `fast`) |
+| `stream(…)` | async-generator text deltas → SSE debrief (default tier `smart`) |
+| `structured(zodSchema, {toolName, …})` | forced tool-call + Zod + 1 repair retry |
+| `listModels()` | catalog probe |
+
+Models: `MODEL_FAST` = `anthropic-claude-haiku-4.5`, `MODEL_SMART` = `anthropic-claude-4.6-sonnet`.
+
+### DigitalOcean MCP
+
+Cursor has user-level DO MCP servers (`~/.cursor/mcp.json` — **not in git**). Use
+`digitalocean-apps` / `digitalocean-databases` to deploy; details in
+[docs/agent-handoff.md](./docs/agent-handoff.md). Reload Cursor if tools are missing.
+
+## File structure (current)
 
 ```
 wavelength/
-├── package.json              # npm workspaces: ["server","shared"] (client at root for now)
-├── AGENTS.md · README.md · BUILD_PLAN.md · docs/
+├── package.json                 # workspaces: client, server, shared
+├── Dockerfile · .dockerignore · .do/app.yaml
+├── .github/workflows/ci.yml
+├── AGENTS.md · STATUS.md · README.md · BUILD_PLAN.md · docs/
 │
-├── src/                      # React app (Vite) — stays at root; client-side perception
-│   ├── App.tsx               #   3-state machine: CONSENT → LIVE → DEBRIEF
-│   ├── perception/           #   ★ MediaPipe → signals → event engine (north-star grows here)
-│   ├── api/                  #   typed fetch/SSE calls to the server's /v1 endpoints
-│   └── components/ · states/ · lib/
-│
-├── shared/src/               # the wire contract — Zod schemas + inferred types (no logic)
-│   ├── contracts/            #   frames.ts · nudge.ts · debrief.ts · session.ts (req+res schemas)
-│   └── domain/               #   SignalFrame, Confidence, shared domain types
-│
-└── server/                   # Node 20 + Express 5 + Drizzle (TypeScript, strict)
-    ├── package.json · tsconfig.json · Dockerfile · drizzle.config.ts
+├── client/                      # React/Vite — NOT yet wired to /v1
+├── shared/                      # domain + contracts → npm run build -w shared
+└── server/
+    ├── docker-entrypoint.sh     # migrate → node dist/index.js
     └── src/
-        ├── index.ts          #   bootstrap: config → logger → app → listen :8080
-        ├── app.ts            #   express app: middleware, routes, error handler
-        ├── config/env.ts     #   Zod-validated env (fail fast)
-        ├── logger.ts         #   Pino
+        ├── index.ts · app.ts · spike.ts · logger.ts · errors.ts
+        ├── config/env.ts        # + CLIENT_DIST, MIGRATIONS_DIR
         ├── http/
-        │   ├── middleware/   #   requestId · errorHandler · cors (locked) · rateLimit
-        │   └── routes/       #   health · frames · nudge · debrief · sessions  (/v1)
-        ├── services/         #   domain logic: metrics (in code) · nudge · debrief · progress
-        ├── repositories/     #   Drizzle queries — the ONLY place SQL lives
-        ├── db/
-        │   ├── schema.ts · client.ts · migrations/
-        ├── clients/gradient.ts   # DO Inference: chat · stream · structured(tool-call+repair)
-        └── errors.ts         #   typed error classes + response envelope
+        │   ├── middleware/      # requestId · errorHandler · cors · rateLimit
+        │   ├── static.ts · parse.ts · mappers.ts
+        │   └── routes/          # health · sessions · frames · nudge · debrief
+        ├── services/            # metrics · nudge · debrief · fallbacks
+        ├── repositories/        # sessions · frames
+        ├── db/                  # schema · client · migrate · migrations/
+        └── clients/gradient.ts
 ```
 
-**Priorities / cut order** (see plan): P0 = camera → live engagement chart → nudge →
-debrief on a deployed URL. Cut under pressure in this order: pgvector → progress/history
-→ frame persistence. Never cut the debrief or the live nudge endpoint.
+**HTTP:** `/health`, `/ready`, `/v1/*`, static SPA when `CLIENT_DIST` set.
+
+**Commands:** `npm run build -w shared` · `npm test` · `npm run db:migrate -w server` ·
+`npm run spike -w server` · `npm run build`.
+
+## Still open
+
+- Peter: wire `client/` → `/v1`
+- Dinil: MediaPipe LIVE loop
+- Optional: `GET /v1/progress`
+- Tear down defunct `wavelength-brain-37j5z`
+- Link GitHub OAuth on DO for `deploy_on_push` (currently public git + manual redeploy)
+
+**Priorities / cut order:** Never cut debrief or live nudge. Cut under pressure:
+pgvector → progress/history → frame persistence.

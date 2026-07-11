@@ -1,81 +1,103 @@
 # Wavelength — Team Status & Decisions
 
 > Single source of truth. Updated 2026-07-12. If you read one file, read this.
-> Product: **Wavelength** — a consented social co-pilot for neurodivergent people. Reads the
-> *trajectory* of a conversation, nudges gently in the moment, debriefs kindly afterward.
+> Fresh agents: also read [docs/agent-handoff.md](./docs/agent-handoff.md).
+> Product (public framing): **Wavelength** — a consented social co-pilot for neurodivergent
+> people. Reads the *trajectory* of a conversation, nudges gently, debriefs kindly.
+> (North-star vision behind it: [docs/north-star.md](./docs/north-star.md).)
 
 ---
 
+## ⚠️ Pivot — read this first (2026-07-12)
+We decided to build the **real production backend from first principles** instead of keeping
+the earlier throwaway test backend.
+- **`debrief/` (the old Python API) was removed** from the repo, and its database tables were
+  dropped.
+- The deployed app **`wavelength-brain-37j5z.ondigitalocean.app` is now defunct** (its tables
+  are gone) and should be torn down.
+- **Consequence:** E2E demo still needs `client/` wired to `/v1`. API is live on App Platform.
+- The new backend lives in **`server/`** (TypeScript/Express), the shared contract in
+  **`shared/`** (Zod). Full plan: [docs/backend-plan.md](./docs/backend-plan.md).
+- **Do not follow** [docs/INTEGRATION.md](./docs/INTEGRATION.md) or [docs/ALIGNMENT.md](./docs/ALIGNMENT.md)
+  — those are pre-pivot / obsolete.
+
 ## TL;DR
-The **backend is done, deployed, and running real AI on DigitalOcean.** The **frontend exists but
-isn't wired to it yet** (that's the critical path). Everything is now merged on `main`.
+**Phases 0–4 are done** (including live App Platform). Smoke passed 2026-07-11.
+**Next critical path:** wire `client/` → `/v1`, then MediaPipe LIVE loop.
 
-## Live right now
-- **Backend API (real inference):** https://wavelength-brain-37j5z.ondigitalocean.app
-  - `GET /health` · `POST /api/debrief` (State 3) · `POST /api/nudge` (State 2, ~1.5s) ·
-    `POST /api/frames` (signal persistence) · `GET /api/progress`
-  - CORS open — call it straight from the browser. Verified end to end on real models.
-- **Models:** `anthropic-claude-haiku-4.5` (default, ~20s) and `anthropic-claude-4.6-sonnet`
-  (~30s, sharper) — the only two verified to pass schema. Do not demo other model names.
+**Live URL:** https://wavelength-wxut4.ondigitalocean.app
 
-## What's DONE (do not rebuild)
-- Full DEBRIEF brain: metrics computed in code + grounded prompt → schema-valid debrief with
-  hedged, warm, concrete coaching. Fuses audio transcript + video `visual_signals`.
-- LIVE nudge phrasing endpoint (evidence + confidence in → one kind hedged suggestion out).
-- Longitudinal memory: recurring-pattern detection + progress trends (Best Use of Data).
-- Deployed on DO App Platform (Docker). Managed Postgres schema written (`debrief/schema.sql`).
-- Typed TS API client for the frontend: `debrief/wavelength-client.ts`.
-- LIVE→DEBRIEF bridge: `debrief/frames_to_signals.js`.
-- Reference UI + fallback: `debrief/viewer.html`. Capture tool: `debrief/recorder.html`.
-- **Working full-loop fallback demo: `debrief/live-demo.html`** — the entire CONSENT → LIVE →
-  DEBRIEF flow driven by the real API, no camera/build needed (engagement simulated by buttons).
-  Verified end to end: frames persist, a real nudge fires live, the debrief generates. If the
-  polished React app isn't wired in time, THIS is a guaranteed-working demo. Serve any static way
-  (e.g. `python -m http.server` in `debrief/`) and open it.
-- Demo script + staging: `BUILD_PLAN.md` §6. Q&A prep + fallback ladder: `pitch-script.md`,
-  `demo-runsheet.md`.
+## Backend status (new `server/`)
+- **Phase 0 — foundation + spike: DONE.** Zod-validated env, Pino logging, typed errors,
+  CORS-locked, `/health` + `/ready`. Spike verified live on DO: 74 models (incl. the two below),
+  chat completion, **forced tool-calling** (our structured-output path), Postgres 16.14 reachable.
+- **Phase 1 — data layer: DONE.** Drizzle schema (`sessions`, `frames` only — no `moments`/pgvector)
+  migrated to Managed Postgres; typed repositories; integration tests green against the live DB.
+- **Phase 2 — Gradient client: DONE.** Typed wrapper in `server/src/clients/gradient.ts`:
+  - `chat()` — one-shot completions (default tier `fast`)
+  - `stream()` — async-generator text deltas for debrief SSE (default tier `smart`)
+  - `structured(zodSchema, …)` — forced tool-call → Zod validate → one repair retry (reliability core)
+  - `listModels()` — catalog probe
+  - Verified live against DO (integration) + hermetic unit tests for the repair loop
+  - Dep: `zod-to-json-schema`. Do **not** pass `{ timeout: undefined }` to the OpenAI SDK
+    (omit request options unless `timeoutMs` is set).
+- **Phase 3 — `/v1` endpoints: DONE.** Shared Zod contracts; services (metrics, nudge, debrief +
+  canned fallbacks); routes mounted under `/v1`:
+  | Method | Path | Notes |
+  |---|---|---|
+  | `POST` | `/v1/sessions` | start session |
+  | `GET` | `/v1/sessions/:id` | fetch one |
+  | `POST` | `/v1/sessions/:id/end` | mark ended |
+  | `POST` | `/v1/frames` | batch ingest |
+  | `GET` | `/v1/sessions/:id/frames` | timeline replay |
+  | `POST` | `/v1/nudge` | `structured` + canned fallback |
+  | `POST` | `/v1/debrief` | SSE via `stream` + canned fallback |
+  Progress/history deferred (cuttable). Hermetic unit tests cover metrics, fallbacks, route validation.
+- **Phase 4 — harden + deploy: DONE (live).** Rate limit on `/v1`; SPA from Express; Docker +
+  migrate entrypoint; App Platform app `wavelength` in sfo bound to `wavelength-db`.
+  Smoke: `/health` `/ready` sessions nudge debrief SSE `/` HTML all green.
+- **Models:** `anthropic-claude-haiku-4.5` (fast) and `anthropic-claude-4.6-sonnet` (sharper).
+- **Commands:** `npm run build -w shared` · `npm test` · `npm run db:migrate -w server` ·
+  `npm run spike -w server` · `npm run test:integration -w server` · `npm run build`.
+
+## DigitalOcean MCP (for deploy agents)
+Cursor user MCP (`~/.cursor/mcp.json`, not in git) mirrors Claude Code for this project:
+`digitalocean-apps`, `digitalocean-databases`, `digitalocean-spaces`, `digitalocean-droplets`,
+`digitalocean-insights`. Reload Cursor if tools are missing. Use MCP to create the app from
+`.do/app.yaml` / Dockerfile — do **not** revive `wavelength-brain-37j5z`.
 
 ## Decisions LOCKED (don't reopen)
 1. **Name: Wavelength.**
 2. **3-state app: CONSENT → LIVE → DEBRIEF**, one page, one laptop, no mobile.
-3. **Real-time nudges: IN** (Dinil's staging trick — partner can't see the screen — resolves the
-   attention/consent concern).
-4. **Stack: React frontend calls the deployed Python API.** No second backend. No Express proxy.
-5. **Modality: audio is the core signal, video is a supporting layer** (never emotion labels).
-6. **Credits: fine.** $200 hackathon credit confirmed applied (expires Jul 14), $5 spare. Total
-   spend so far ~$0.30 of testing. Burn freely.
+3. **Real-time nudges: IN** (Dinil's staging trick — partner can't see the screen).
+4. **Stack: monorepo — `client/` (React/Vite) + `server/` (TS/Express) + `shared/` (Zod contract).**
+   One deployable; the server holds the DO key and proxies inference; CORS locked (key never in
+   the browser). *(Reverses the earlier "React calls a Python API, no Express proxy" decision.)*
+5. **Modality: audio core, video supporting** — never emotion labels (public framing).
+6. **Credits: fine.** $200 hackathon credit applied (expires Jul 14). Burn freely.
+7. **Persistence: DO Managed Postgres** — provisioned and working (was "stuck"; now live).
 
-## DECISIONS WE STILL NEED (please weigh in)
-1. **Who wires the frontend to the API, and by when?** Peter's `src/` renders static
-   `sessions.ts` and does not call the backend yet. This is THE critical path. The client
-   (`debrief/wavelength-client.ts`) + mapping guide (`INTEGRATION.md` "For Peter") make it small,
-   but someone has to do it. **Owner + deadline needed.**
-2. **How far do we build the LIVE loop vs. lean on DEBRIEF?** The MediaPipe live-signal loop
-   (BUILD_PLAN §2/§4) is the wow but also the riskiest on stage. Fallback = debrief-only is
-   solid. Decide the ambition given our actual remaining hours (confirm the window — BUILD_PLAN
-   assumes 8h/6.5h freeze; is that right?).
-3. **Persistent DB: needed for the demo, or ship in-memory + seeded?** Managed Postgres has been
-   stuck provisioning ~45 min (abnormal). Memory + frames both work in-memory with a seeded
-   improving trajectory, which demos identically. Recommend: **don't block on it** — I'll try one
-   recreate; if it's not up fast, we demo on in-memory and still show the Postgres schema. OK?
-4. **Repo tidy (minor):** `main` has both the old static `index.html`/`styles/` prototype and
-   Peter's real React `src/` app. Entry point is the React app. Also `context/` and `docs/` both
-   hold the DO reference docs. Harmless; delete the duplicates whenever someone wants it clean.
-5. **Demo roles:** who narrates, who drives the laptop, who are the two actors in the skit
-   (BUILD_PLAN §6). Assign before rehearsal.
+## Decisions we still need
+1. **Who wires `client/` → `/v1`, and by when?** Still THE critical path for E2E demo (API ready).
+2. **LIVE loop ambition** (MediaPipe → signals → event engine) vs. debrief-only fallback. Dinil
+   owns the loop (after live URL).
+3. **Tear down the old `wavelength-brain` DO app?** It's defunct now. Recommend yes.
+4. **Repo tidy:** `main` still carries the old static prototype (`old/`, `styles/`, root
+   `index.html`) and duplicate DO docs (`context/` vs `docs/`). Delete when someone wants it clean.
+5. **Demo roles:** narrator, laptop driver, two skit actors (BUILD_PLAN §6).
 
 ## What's LEFT, by owner
-- **Peter:** wire `src/` to the live API using `wavelength-client.ts` (LiveView → nudge/frames,
-  End Session → debrief, StatsView → progress). Keep `sessions.ts` as offline fallback.
-- **Dinil:** build the LIVE loop (MediaPipe → derived signals → event engine) against the
-  endpoints. No backend needed — it's all served.
-- **Connor + backend:** wire Postgres when/if it provisions; support integration; own pitch/demo.
-- **All:** two timed rehearsals of the skit; the 30-sec Chrome mic test of `recorder.html`;
-  record a backup demo video (fallback rung 4).
+- **Dinil:** MediaPipe LIVE loop against live `/v1`.
+- **Peter:** wire `client/` to `/v1`. Keep `sessions.ts` as offline fallback.
+- **Connor:** coordinate teardown of the old app; own pitch/demo.
+- **All:** two timed skit rehearsals; record a backup demo video.
 
 ## Known risks / loose ends
-- Frontend not yet calling the API (risk #1 above).
-- Postgres provisioning stuck (mitigated by in-memory fallback).
+- **AI triage kit (2026-07-11):** AppError + Gradient + canned-fallback logs; hermetic session/frame route tests; client `eventEngine` unit tests (`npm test` runs server + client).
+- Frontend not yet wired to the new backend.
+- Old deployed app defunct (its tables were dropped) — tear it down.
 - Web Speech + MediaPipe are Chrome-only — demo in real Chrome, controlled lighting.
-- After the event: rotate the DO API token + delete the `wavelength` model key (both were exposed
-  in chat during setup).
+- **Security:** DO API / model keys have appeared in chat and local MCP configs —
+  **rotate after the event.** Never commit secrets.
+- App Platform GitHub OAuth is **not** linked on this DO account — deploys use public
+  `git` clone (manual `apps-update` / console redeploy after push; no `deploy_on_push`).

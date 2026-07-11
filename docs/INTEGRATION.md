@@ -1,5 +1,17 @@
 # Integration note — for Dinil's Claude reading this branch
 
+> **OBSOLETE (2026-07-12).** Pre-pivot note about the removed Python `debrief/` API and the
+> defunct `wavelength-brain` App Platform deploy. **Do not follow** — it tells agents not to
+> build Express and cites `/api/*` contracts that no longer exist.
+>
+> Current SoT: [STATUS.md](../STATUS.md) · [docs/backend-plan.md](./backend-plan.md) ·
+> [AGENTS.md](../AGENTS.md). Stack is `client/` + `server/` (Express/TS) + `shared/`; Phase 3
+> lands fresh `/v1` endpoints.
+
+---
+
+> Historical context only — kept for the archive.
+>
 > You wrote `BUILD_PLAN.md` (on `dinil-main`) for a 3-state app: CONSENT → LIVE → DEBRIEF.
 > **Good news: your entire State 3 (DEBRIEF) is already built, deployed, and verified on real
 > DigitalOcean inference on this branch (`connor-main`).** Several of your "first 30 minutes"

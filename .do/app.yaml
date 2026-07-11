@@ -1,0 +1,56 @@
+name: wavelength
+region: sfo
+
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    # GitHub OAuth is not linked on this DO account — use public git clone.
+    # Re-link GitHub in App Platform if you want deploy_on_push.
+    git:
+      repo_clone_url: https://github.com/chuckabox/digitalocean.git
+      branch: main
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: CLIENT_DIST
+        value: /app/client/dist
+      - key: MIGRATIONS_DIR
+        value: /app/server/migrations
+      - key: CORS_ORIGIN
+        scope: RUN_TIME
+        type: GENERAL
+        value: "${APP_URL},http://localhost:5173"
+      - key: DIGITAL_OCEAN_MODEL_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${db.DATABASE_URL}
+      - key: DO_INFERENCE_BASE_URL
+        value: https://inference.do-ai.run/v1
+      - key: MODEL_FAST
+        value: anthropic-claude-haiku-4.5
+      - key: MODEL_SMART
+        value: anthropic-claude-4.6-sonnet
+
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: wavelength-db
+    db_name: defaultdb
+    db_user: doadmin
