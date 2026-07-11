@@ -97,6 +97,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
   const [autoNudge, setAutoNudge] = useState(true);
   const [meshOn, setMeshOn] = useState(true);
   const [meshCanvas, setMeshCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [interim, setInterim] = useState('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,11 +134,12 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     engineRef.current = createEngineState();
   }, [sessionId]);
 
-  // Keep the transcript feed pinned to the newest line as it streams in.
+  // Keep the transcript feed pinned to the newest line as it (and the live
+  // interim text) streams in.
   useEffect(() => {
     const el = transcriptScrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [transcript.length]);
+  }, [transcript.length, interim]);
 
   const fireNudge = useCallback(
     async (confidence: NudgeResponse['confidence'], evidence: string[], t: number) => {
@@ -205,7 +207,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
 
   useSyntheticLoop(syntheticEnabled, onFrame);
   useFrameIngest(sessionId, frames);
-  useSpeech(Boolean(sessionId), startedAtMs, appendTranscript);
+  useSpeech(Boolean(sessionId), startedAtMs, appendTranscript, setInterim);
 
   const sourceLabel = forcedSynthetic
     ? 'synthetic (?synthetic=1)'
@@ -411,13 +413,13 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               muted={videoSource === 'camera'}
               controls={videoSource === 'clip'}
               src={videoSource === 'clip' && clipUrl ? clipUrl : undefined}
-              className={`w-full h-full ${videoSource === 'clip' ? 'object-contain bg-black' : 'object-cover'} ${videoSource === 'none' ? 'hidden' : 'block'}`}
+              className={`w-full h-full ${videoSource === 'clip' ? 'object-contain bg-black' : 'object-cover'} ${videoSource === 'camera' ? '-scale-x-100' : ''} ${videoSource === 'none' ? 'hidden' : 'block'}`}
               playsInline
             />
             {videoSource === 'camera' && (
               <canvas
                 ref={setMeshCanvas}
-                className="absolute inset-0 w-full h-full pointer-events-none"
+                className="absolute inset-0 w-full h-full pointer-events-none -scale-x-100"
                 aria-hidden
               />
             )}
@@ -445,36 +447,50 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
                 ref={transcriptScrollRef}
                 className="max-h-[220px] overflow-y-auto flex flex-col pr-1"
               >
-                {transcriptRows.length === 0 ? (
+                {transcriptRows.length === 0 && !interim ? (
                   <p className="text-[13px] text-ink-3">
-                    Listening… your words appear here with the engagement reading at the moment you
-                    said them, so you can see where a conversation slipped.
+                    Listening… your words appear here live with the engagement reading at the moment
+                    you said them, so you can see where a conversation slipped.
                   </p>
                 ) : (
-                  transcriptRows.map(({ turn, engagement }, i, arr) => {
-                    const engPct = engagement == null ? null : Math.round(engagement * 100);
-                    const variant =
-                      engPct == null ? 'accent' : engPct < 40 ? 'alert' : engPct >= 55 ? 'positive' : 'accent';
-                    return (
-                      <div
-                        key={`${turn.t}-${i}`}
-                        className={`grid grid-cols-[46px_1fr_auto] gap-3 py-[11px] items-baseline ${i < arr.length - 1 ? 'border-b border-rule' : ''} ${i === 0 ? 'pt-0' : ''}`}
-                      >
-                        <span className="font-mono text-xs text-ink-3">{formatTime(turn.t)}</span>
-                        <span className="text-[13px] leading-normal">
-                          {turn.speaker === 'partner' && (
-                            <span className="font-mono text-[10px] text-ink-3 mr-1.5">them</span>
+                  <>
+                    {transcriptRows.map(({ turn, engagement }, i) => {
+                      const engPct = engagement == null ? null : Math.round(engagement * 100);
+                      const variant =
+                        engPct == null ? 'accent' : engPct < 40 ? 'alert' : engPct >= 55 ? 'positive' : 'accent';
+                      return (
+                        <div
+                          key={`${turn.t}-${i}`}
+                          className={`grid grid-cols-[46px_1fr_auto] gap-3 py-[11px] items-baseline border-b border-rule ${i === 0 ? 'pt-0' : ''}`}
+                        >
+                          <span className="font-mono text-xs text-ink-3">{formatTime(turn.t)}</span>
+                          <span className="text-[13px] leading-normal">
+                            {turn.speaker === 'partner' && (
+                              <span className="font-mono text-[10px] text-ink-3 mr-1.5">them</span>
+                            )}
+                            {turn.text}
+                          </span>
+                          {engPct != null && (
+                            <Badge variant={variant} size="sm" title="engagement at this moment">
+                              {engPct}%
+                            </Badge>
                           )}
-                          {turn.text}
+                        </div>
+                      );
+                    })}
+                    {interim && (
+                      <div className="grid grid-cols-[46px_1fr_auto] gap-3 py-[11px] items-baseline">
+                        <span className="font-mono text-[10px] text-accent uppercase tracking-wide">
+                          live
                         </span>
-                        {engPct != null && (
-                          <Badge variant={variant} size="sm" title="engagement at this moment">
-                            {engPct}%
-                          </Badge>
-                        )}
+                        <span className="text-[13px] leading-normal italic text-ink-2">{interim}</span>
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse self-center"
+                          aria-hidden
+                        />
                       </div>
-                    );
-                  })
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>

@@ -34,9 +34,12 @@ export function useSpeech(
   enabled: boolean,
   startedAtMs: number | null,
   onTurn: (turn: TranscriptTurn) => void,
+  onInterim?: (text: string) => void,
 ) {
   const onTurnRef = useRef(onTurn);
   onTurnRef.current = onTurn;
+  const onInterimRef = useRef(onInterim);
+  onInterimRef.current = onInterim;
   const startedRef = useRef(startedAtMs);
   startedRef.current = startedAtMs;
   const enabledRef = useRef(enabled);
@@ -52,19 +55,29 @@ export function useSpeech(
 
     let stopped = false;
     rec.continuous = true;
-    rec.interimResults = false;
+    // interimResults streams partial text as the user is still speaking, so the
+    // transcript feels live instead of only appearing after each sentence ends.
+    rec.interimResults = true;
     rec.lang = 'en-US';
 
     rec.onresult = (ev) => {
       const t0 = startedRef.current ?? Date.now();
-      const t = Math.max(0, (Date.now() - t0) / 1000);
+      let interim = '';
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const result = ev.results[i];
-        if (!result?.isFinal) continue;
-        const text = result[0]?.transcript?.trim();
-        if (!text) continue;
-        onTurnRef.current({ speaker: 'user', t, text });
+        const text = result[0]?.transcript ?? '';
+        if (result?.isFinal) {
+          const trimmed = text.trim();
+          if (trimmed) {
+            const t = Math.max(0, (Date.now() - t0) / 1000);
+            onTurnRef.current({ speaker: 'user', t, text: trimmed });
+          }
+        } else {
+          interim += text;
+        }
       }
+      // Show whatever is still being spoken (empty once the last result finalizes).
+      onInterimRef.current?.(interim.trim());
     };
 
     rec.onerror = (ev) => {
@@ -91,6 +104,7 @@ export function useSpeech(
 
     return () => {
       stopped = true;
+      onInterimRef.current?.('');
       try {
         rec.stop();
       } catch {
