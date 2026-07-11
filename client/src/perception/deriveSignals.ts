@@ -61,16 +61,3 @@ export function matrixToYawPitch(matrix: number[] | undefined): { yaw: number; p
   const yaw = Math.atan2(r20, r22);
   return { yaw, pitch };
 }
-
-export function interocularDistance(
-  landmarks: Array<{ x: number; y: number }> | undefined,
-): number | null {
-  if (!landmarks || landmarks.length < 400) return null;
-  // MediaPipe face mesh: left eye outer ~33, right eye outer ~263 (approx)
-  const a = landmarks[33];
-  const b = landmarks[263];
-  if (!a || !b) return null;
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return Math.hypot(dx, dy);
-}

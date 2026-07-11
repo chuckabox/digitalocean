@@ -302,7 +302,6 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     { label: 'Engagement', width: pct(liveFrame?.engagement), variant: 'accent' },
     { label: 'Attention', width: pct(liveFrame?.attention), variant: 'positive' },
     { label: 'Smile', width: pct(liveFrame?.signals?.smile), variant: 'positive' },
-    { label: 'Lean-in', width: pct(liveFrame?.signals?.lean), variant: 'accent' },
     {
       label: 'Gaze away',
       width: pct(liveFrame?.signals?.gazeAway),

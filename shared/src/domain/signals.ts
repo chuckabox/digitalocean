@@ -23,7 +23,7 @@ export const SignalFrameSchema = z.object({
   engagement: z.number().min(0).max(1).optional(),
   valence: z.number().min(-1).max(1).optional(),
   attention: z.number().min(0).max(1).optional(),
-  /** raw derived signal snapshot (smile, gaze, lean, ...) */
+  /** raw derived signal snapshot (smile, gaze, ...) */
   signals: z.record(z.string(), z.number()).optional(),
   /** soft emotion-state probabilities — experimental / hedged */
   emotions: EmotionProbsSchema.optional(),

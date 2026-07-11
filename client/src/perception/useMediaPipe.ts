@@ -5,11 +5,7 @@ import {
   type FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision';
 import type { SignalFrame } from 'shared';
-import {
-  blendshapeMap,
-  deriveRawSignals,
-  interocularDistance,
-} from './deriveSignals';
+import { blendshapeMap, deriveRawSignals } from './deriveSignals';
 import { createEngagementState, updateEngagement, type EngagementState } from './engagement';
 import { estimateEmotion } from './estimateEmotion';
 import { drawFaceMesh } from './drawFaceMesh';
@@ -74,7 +70,6 @@ export function useMediaPipe({
   });
   const lastVideoTime = useRef(-1);
   const lastEmitT = useRef(-Infinity);
-  const iodBaseline = useRef<number | null>(null);
   const prevLandmarks = useRef<Array<{ x: number; y: number }> | null>(null);
   const motionEma = useRef(0);
   const onFrameRef = useRef(onFrame);
@@ -98,7 +93,6 @@ export function useMediaPipe({
     setError(null);
     engRef.current = createEngagementState();
     rppgRef.current = createRppgState();
-    iodBaseline.current = null;
     prevLandmarks.current = null;
     motionEma.current = 0;
     lastEmitT.current = -Infinity;
@@ -191,20 +185,10 @@ export function useMediaPipe({
       const shapes = blendshapeMap(cats);
       const matrix = result.facialTransformationMatrixes?.[0]?.data as number[] | undefined;
       const raw = deriveRawSignals(shapes, matrix);
-      const iod = interocularDistance(landmarks);
-      if (iod != null) {
-        if (iodBaseline.current == null) iodBaseline.current = iod;
-        else iodBaseline.current = iodBaseline.current * 0.98 + iod * 0.02;
-      }
-      const lean =
-        iod != null && iodBaseline.current
-          ? Math.max(0, Math.min(1, iod / iodBaseline.current))
-          : 0.5;
 
       const { state, frame } = updateEngagement(engRef.current, {
         t,
         ...raw,
-        lean,
         facePresent,
       });
       engRef.current = state;

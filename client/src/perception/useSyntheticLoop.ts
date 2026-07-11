@@ -45,7 +45,6 @@ export function useSyntheticLoop(
       const attention = Math.max(0, Math.min(1, engagement * 0.95 - (window.__wlDip ? 0.15 : 0)));
       const smile = engagement * 0.45;
       const gazeAway = 1 - attention;
-      const lean = engagement * 0.3;
       const browFurrow = window.__wlDip ? 0.45 : 0.08;
       const browRaise = window.__wlDip ? 0.35 : 0.1;
       const jawOpen = 0.05 + 0.04 * Math.sin(t * 2);
@@ -78,7 +77,6 @@ export function useSyntheticLoop(
         signals: {
           smile,
           gazeAway,
-          lean,
           browFurrow,
           browRaise,
           jawOpen,

@@ -8,7 +8,6 @@ export type RawTick = {
   eyeOpenness: number;
   gazeAway: number;
   jawOpen: number;
-  lean: number; // 0–1 relative to baseline interocular (1 = closer / lean-in)
   facePresent: boolean;
 };
 
@@ -18,7 +17,6 @@ export type EngagementState = {
   meanSmile: number;
   meanGazeAway: number;
   meanBrow: number;
-  meanLean: number;
   meanExpress: number;
   lastJaw: number;
   jawVarEma: number;
@@ -31,7 +29,6 @@ export function createEngagementState(): EngagementState {
     meanSmile: 0,
     meanGazeAway: 0,
     meanBrow: 0,
-    meanLean: 0,
     meanExpress: 0,
     lastJaw: 0,
     jawVarEma: 0,
@@ -66,7 +63,6 @@ export function updateEngagement(
       meanSmile: next.meanSmile + (tick.smile - next.meanSmile) / n,
       meanGazeAway: next.meanGazeAway + (tick.gazeAway - next.meanGazeAway) / n,
       meanBrow: next.meanBrow + (tick.browFurrow - next.meanBrow) / n,
-      meanLean: next.meanLean + (tick.lean - next.meanLean) / n,
       meanExpress: next.meanExpress + (express - next.meanExpress) / n,
       baselineReady: n >= BASELINE_SAMPLES,
     };
@@ -74,15 +70,13 @@ export function updateEngagement(
 
   const dSmile = tick.smile - next.meanSmile;
   const dGaze = tick.gazeAway - next.meanGazeAway;
-  const dLean = tick.lean - next.meanLean;
   const dExpress = express - next.meanExpress;
 
-  // Higher engagement: looking at camera, smiling/leaning relative to baseline
+  // Higher engagement: looking at camera, smiling / expressive relative to baseline
   const engagement = clamp01(
     0.55 +
-      dSmile * 0.35 +
-      dLean * 0.25 +
-      dExpress * 0.2 -
+      dSmile * 0.4 +
+      dExpress * 0.25 -
       dGaze * 0.45 -
       tick.gazeAway * 0.15,
   );
@@ -102,7 +96,6 @@ export function updateEngagement(
       browFurrow: tick.browFurrow,
       eyeOpenness: tick.eyeOpenness,
       gazeAway: tick.gazeAway,
-      lean: tick.lean,
       jawOpen: tick.jawOpen,
       talking: clamp01(jawVarEma * 8),
     },
