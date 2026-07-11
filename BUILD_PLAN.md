@@ -5,10 +5,11 @@
 > Product name: **Wavelength**.
 >
 > **Note (2026-07-12):** This file is still the day schedule + demo script. For **backend
-> status, stack, and API paths**, use [STATUS.md](./STATUS.md) and
-> [docs/backend-plan.md](./docs/backend-plan.md). The production contract is fresh **`/v1/*`**
-> on the Express/TS `server/` (Phases 0–3 done; Phase 4 next) — not the `/api/*` Python paths
-> mentioned below, and not the removed `debrief/` service.
+> status, stack, and API paths**, use [STATUS.md](./STATUS.md),
+> [docs/agent-handoff.md](./docs/agent-handoff.md), and [docs/backend-plan.md](./docs/backend-plan.md).
+> The production contract is fresh **`/v1/*`** on Express/TS `server/` (Phases 0–4 **code**
+> done; App Platform live URL pending) — not the `/api/*` Python paths mentioned below, and
+> not the removed `debrief/` service.
 
 ---
 

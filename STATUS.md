@@ -1,6 +1,7 @@
 # Wavelength — Team Status & Decisions
 
 > Single source of truth. Updated 2026-07-12. If you read one file, read this.
+> Fresh agents: also read [docs/agent-handoff.md](./docs/agent-handoff.md).
 > Product (public framing): **Wavelength** — a consented social co-pilot for neurodivergent
 > people. Reads the *trajectory* of a conversation, nudges gently, debriefs kindly.
 > (North-star vision behind it: [docs/north-star.md](./docs/north-star.md).)
@@ -14,19 +15,17 @@ the earlier throwaway test backend.
   dropped.
 - The deployed app **`wavelength-brain-37j5z.ondigitalocean.app` is now defunct** (its tables
   are gone) and should be torn down.
-- **Consequence:** the old guaranteed-working fallback demo (`debrief/live-demo.html`) went with
-  it. We do not have a working end-to-end demo again until the frontend is wired to the new
-  `/v1` endpoints (Phase 3 shipped; client wiring is next). Plan the fallback accordingly.
+- **Consequence:** E2E demo still needs `client/` wired to `/v1`. API is live on App Platform.
 - The new backend lives in **`server/`** (TypeScript/Express), the shared contract in
   **`shared/`** (Zod). Full plan: [docs/backend-plan.md](./docs/backend-plan.md).
 - **Do not follow** [docs/INTEGRATION.md](./docs/INTEGRATION.md) or [docs/ALIGNMENT.md](./docs/ALIGNMENT.md)
   — those are pre-pivot / obsolete.
 
 ## TL;DR
-**Phases 0–4 code done** (through harden + Docker + CI + App Platform spec).
-**Remaining:** create the App Platform app from [`.do/app.yaml`](./.do/app.yaml), set
-secrets, paste the live URL here. Guide: [docs/phase-4.md](./docs/phase-4.md).
-Frontend (`client/`) still needs wiring to `/v1` for E2E demo.
+**Phases 0–4 are done** (including live App Platform). Smoke passed 2026-07-11.
+**Next critical path:** wire `client/` → `/v1`, then MediaPipe LIVE loop.
+
+**Live URL:** https://wavelength-wxut4.ondigitalocean.app
 
 ## Backend status (new `server/`)
 - **Phase 0 — foundation + spike: DONE.** Zod-validated env, Pino logging, typed errors,
@@ -54,14 +53,18 @@ Frontend (`client/`) still needs wiring to `/v1` for E2E demo.
   | `POST` | `/v1/nudge` | `structured` + canned fallback |
   | `POST` | `/v1/debrief` | SSE via `stream` + canned fallback |
   Progress/history deferred (cuttable). Hermetic unit tests cover metrics, fallbacks, route validation.
-- **Phase 4 — harden + deploy artifacts: DONE (code).** Rate limit on `/v1` (stricter on
-  nudge/debrief); Express serves `CLIENT_DIST` SPA; root `Dockerfile` + entrypoint migrate;
-  `.do/app.yaml`; GitHub Actions CI. **Live App Platform URL: pending** — create app from
-  `.do/app.yaml`, set `DIGITAL_OCEAN_MODEL_ACCESS_KEY` + `DATABASE_URL` + `CORS_ORIGIN`, then
-  paste URL here. See [docs/phase-4.md](./docs/phase-4.md).
+- **Phase 4 — harden + deploy: DONE (live).** Rate limit on `/v1`; SPA from Express; Docker +
+  migrate entrypoint; App Platform app `wavelength` in sfo bound to `wavelength-db`.
+  Smoke: `/health` `/ready` sessions nudge debrief SSE `/` HTML all green.
 - **Models:** `anthropic-claude-haiku-4.5` (fast) and `anthropic-claude-4.6-sonnet` (sharper).
-- **Commands:** `npm run spike -w server` · `npm run db:migrate -w server` · `npm test`
-  · `npm run test:integration -w server` · `npm run build` (shared+client+server).
+- **Commands:** `npm run build -w shared` · `npm test` · `npm run db:migrate -w server` ·
+  `npm run spike -w server` · `npm run test:integration -w server` · `npm run build`.
+
+## DigitalOcean MCP (for deploy agents)
+Cursor user MCP (`~/.cursor/mcp.json`, not in git) mirrors Claude Code for this project:
+`digitalocean-apps`, `digitalocean-databases`, `digitalocean-spaces`, `digitalocean-droplets`,
+`digitalocean-insights`. Reload Cursor if tools are missing. Use MCP to create the app from
+`.do/app.yaml` / Dockerfile — do **not** revive `wavelength-brain-37j5z`.
 
 ## Decisions LOCKED (don't reopen)
 1. **Name: Wavelength.**
@@ -75,25 +78,25 @@ Frontend (`client/`) still needs wiring to `/v1` for E2E demo.
 7. **Persistence: DO Managed Postgres** — provisioned and working (was "stuck"; now live).
 
 ## Decisions we still need
-1. **Who wires `client/` → `/v1`, and by when?** Still THE critical path (API is ready).
+1. **Who wires `client/` → `/v1`, and by when?** Still THE critical path for E2E demo (API ready).
 2. **LIVE loop ambition** (MediaPipe → signals → event engine) vs. debrief-only fallback. Dinil
-   owns the loop.
+   owns the loop (after live URL).
 3. **Tear down the old `wavelength-brain` DO app?** It's defunct now. Recommend yes.
 4. **Repo tidy:** `main` still carries the old static prototype (`old/`, `styles/`, root
    `index.html`) and duplicate DO docs (`context/` vs `docs/`). Delete when someone wants it clean.
 5. **Demo roles:** narrator, laptop driver, two skit actors (BUILD_PLAN §6).
 
 ## What's LEFT, by owner
-- **Dinil:** create App Platform app from `.do/app.yaml` + secrets; then MediaPipe LIVE loop against `/v1`.
-- **Peter:** wire `client/` to the new `/v1` API. Keep `sessions.ts` as offline fallback.
+- **Dinil:** MediaPipe LIVE loop against live `/v1`.
+- **Peter:** wire `client/` to `/v1`. Keep `sessions.ts` as offline fallback.
 - **Connor:** coordinate teardown of the old app; own pitch/demo.
-- **All:** two timed skit rehearsals; record a backup demo video (we currently have no working
-  end-to-end fallback — see the pivot note).
+- **All:** two timed skit rehearsals; record a backup demo video.
 
 ## Known risks / loose ends
-- **No working end-to-end demo right now** (old fallback removed; new one not built yet).
 - Frontend not yet wired to the new backend.
 - Old deployed app defunct (its tables were dropped) — tear it down.
 - Web Speech + MediaPipe are Chrome-only — demo in real Chrome, controlled lighting.
-- **Security:** a DO model access key was pasted in chat this session — **rotate it after the
-  event.** Also rotate the earlier-exposed DO API token + `wavelength` model key.
+- **Security:** DO API / model keys have appeared in chat and local MCP configs —
+  **rotate after the event.** Never commit secrets.
+- App Platform GitHub OAuth is **not** linked on this DO account — deploys use public
+  `git` clone (manual `apps-update` / console redeploy after push; no `deploy_on_push`).

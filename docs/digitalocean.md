@@ -121,7 +121,22 @@ Continuous deployment from GitHub — push code, get a live URL.
 
 Connect Claude Code, Cursor, or any MCP client to DigitalOcean. No local binary needed — pure HTTPS endpoints.
 
-### Setup
+### Wavelength (this repo) — Cursor setup
+
+User-level Cursor config lives at `~/.cursor/mcp.json` (**not committed** — contains the DO
+API token). Servers enabled for deploy agents:
+
+- `digitalocean-apps`
+- `digitalocean-databases`
+- `digitalocean-spaces`
+- `digitalocean-droplets`
+- `digitalocean-insights`
+
+Reload Cursor after changing MCP config. Prefer these tools to create the App Platform app
+from [`.do/app.yaml`](../.do/app.yaml) / root `Dockerfile`. Do **not** revive
+`wavelength-brain-37j5z`. See [agent-handoff.md](./agent-handoff.md).
+
+### Setup (generic)
 
 ```json
 {

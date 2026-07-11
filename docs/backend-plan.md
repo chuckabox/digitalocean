@@ -50,33 +50,41 @@ shared/ : zod schemas + inferred types = the contract client & server agree on
 locked (not `*`), request IDs in logs, no secrets in logs, timeouts + retries on every
 outbound DO call, and a graceful fallback when inference fails.
 
-**Today (Phases 0–3):** repositories + Gradient client + services + `/v1` routes
-(sessions, frames, nudge, SSE debrief). Progress/history deferred. Phase 4: rate limit,
-Dockerfile, App Platform.
+**Today (Phases 0–4 code):** repositories + Gradient client + services + `/v1` routes
+(sessions, frames, nudge, SSE debrief) + rate limits + static SPA + Docker/App Platform
+spec + CI. Progress/history deferred. **Live App Platform URL pending.**
 
-## What exists on disk (Phases 0–3)
+## What exists on disk (Phases 0–4)
 
 ```
+Dockerfile · .dockerignore · .do/app.yaml · .github/workflows/ci.yml
+
 shared/src/
 ├── domain/signals.ts
 └── contracts/           # session · frames · nudge · debrief
 
-server/src/
-├── index.ts · app.ts · spike.ts · logger.ts · errors.ts
-├── config/env.ts
-├── http/middleware/     # requestId · errorHandler · cors
-├── http/routes/         # health · sessions · frames · nudge · debrief
-├── services/            # metrics · nudge · debrief · fallbacks
-├── repositories/        # sessions · frames
-├── db/
-└── clients/gradient.ts
+server/
+├── docker-entrypoint.sh
+└── src/
+    ├── index.ts · app.ts · spike.ts · logger.ts · errors.ts
+    ├── config/env.ts        # + CLIENT_DIST, MIGRATIONS_DIR
+    ├── http/middleware/     # requestId · errorHandler · cors · rateLimit
+    ├── http/static.ts · parse.ts · mappers.ts
+    ├── http/routes/         # health · sessions · frames · nudge · debrief
+    ├── services/            # metrics · nudge · debrief · fallbacks
+    ├── repositories/        # sessions · frames
+    ├── db/
+    └── clients/gradient.ts
 ```
 
 **Env (see `config/env.ts`):** `DIGITAL_OCEAN_MODEL_ACCESS_KEY`, `DO_INFERENCE_BASE_URL`,
-`MODEL_FAST` / `MODEL_SMART`, `DATABASE_URL`, `CORS_ORIGIN`, `PORT` (default 8080).
+`MODEL_FAST` / `MODEL_SMART`, `DATABASE_URL`, `CORS_ORIGIN`, `PORT` (default 8080),
+`CLIENT_DIST`, `MIGRATIONS_DIR`.
 
-**Commands:** `npm run spike -w server` · `npm run db:migrate -w server` ·
-`npm test -w server` · `npm run test:integration -w server`.
+**Commands:** `npm run build -w shared` · `npm test` · `npm run db:migrate -w server` ·
+`npm run spike -w server` · `npm run test:integration -w server` · `npm run build`.
+
+Handoff for deploy agents: [agent-handoff.md](./agent-handoff.md).
 
 ## Phases
 
@@ -119,7 +127,8 @@ OpenAI SDK → `DO_INFERENCE_BASE_URL`; SDK `maxRetries: 2`, default timeout 30s
 **Verified:** hermetic unit tests (repair: valid-first-try, schema-repair, malformed-JSON,
 exhaustion→throw) + live integration (`chat`, `structured`, `stream`, `listModels`).
 
-**Still Phase 3/4:** canned inference fallbacks at the service layer (not exported from the client).
+**Still Phase 4+ service polish:** canned fallbacks already live in services; App Platform
+live URL still pending.
 
 ### Phase 3 — Domain services + endpoints (fresh `/v1` contract) ✅ DONE
 - Shared contracts wired (`server` depends on `shared`).

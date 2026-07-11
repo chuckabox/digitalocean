@@ -2,6 +2,13 @@
 
 Instructions for coding agents working in this repo.
 
+## Start here
+
+1. **[STATUS.md](./STATUS.md)** — what exists, what's left, locked decisions.
+2. **[docs/agent-handoff.md](./docs/agent-handoff.md)** — compact handoff for deploy / next work.
+3. **[docs/backend-plan.md](./docs/backend-plan.md)** — phased backend SoT.
+4. **[docs/phase-4.md](./docs/phase-4.md)** — how to deploy to App Platform.
+
 ## What we're building
 
 **Wavelength** — a consented social co-pilot for one-on-one conversations. It reads
@@ -9,9 +16,7 @@ the *trajectory* of a conversation from the webcam and suggests, never diagnoses
 discreet hedged nudges live, an annotated timeline + AI debrief afterward.
 
 This is a **one-day hackathon build**. Day schedule / demo script:
-**[BUILD_PLAN.md](./BUILD_PLAN.md)**. Live team status + locked decisions:
-**[STATUS.md](./STATUS.md)** (read this first for "what exists now"). Backend plan:
-**[docs/backend-plan.md](./docs/backend-plan.md)**.
+**[BUILD_PLAN.md](./BUILD_PLAN.md)** (paths/contract superseded by backend-plan — use `/v1`).
 
 ## Framing (read this)
 
@@ -39,15 +44,15 @@ that's the point. Show *capability* ("the machine reads and reasons"), never cla
 
 ## Where things are
 
-- **[STATUS.md](./STATUS.md)** — team SoT: phase status, locked decisions, owners. **Read first.**
-- **[docs/backend-plan.md](./docs/backend-plan.md)** — production backend plan (phases, stack, on-disk tree).
-- **[docs/phase-4.md](./docs/phase-4.md)** — Phase 4 harden + deploy implementation guide (next).
-- **[BUILD_PLAN.md](./BUILD_PLAN.md)** — day schedule + demo script (paths/contract superseded by backend-plan).
-- **[docs/vision.md](./docs/vision.md)** — the public product vision (neurodivergent framing).
-- **[docs/north-star.md](./docs/north-star.md)** — the real vision: machine perception of people.
-- **[docs/hackathon-goals.md](./docs/hackathon-goals.md)** — judging criteria & target prizes.
-- **[docs/digitalocean.md](./docs/digitalocean.md)** — DigitalOcean capabilities cheat-sheet.
-- **`.agents/skills/digitalocean-ai/`** — installed DO Inference skill (deep reference).
+- **[STATUS.md](./STATUS.md)** — team SoT. **Read first.**
+- **[docs/agent-handoff.md](./docs/agent-handoff.md)** — current reality + deploy/MCP notes.
+- **[docs/backend-plan.md](./docs/backend-plan.md)** — production backend plan (phases, stack).
+- **[docs/phase-4.md](./docs/phase-4.md)** — harden + deploy implementation guide.
+- **[BUILD_PLAN.md](./BUILD_PLAN.md)** — day schedule + demo script.
+- **[docs/vision.md](./docs/vision.md)** · **[docs/north-star.md](./docs/north-star.md)** ·
+  **[docs/hackathon-goals.md](./docs/hackathon-goals.md)**
+- **[docs/digitalocean.md](./docs/digitalocean.md)** — DO capabilities + MCP endpoints.
+- **`.agents/skills/digitalocean-ai/`** — DO Inference skill (deep reference).
 
 > **Obsolete — do not follow:** [docs/INTEGRATION.md](./docs/INTEGRATION.md),
 > [docs/ALIGNMENT.md](./docs/ALIGNMENT.md), [docs/demo-runsheet.md](./docs/demo-runsheet.md)
@@ -55,18 +60,15 @@ that's the point. Show *capability* ("the machine reads and reasons"), never cla
 
 ## Architecture
 
-Production build, good fundamentals. One monorepo, **one deployable**: a Node/Express
-(TypeScript) service that will serve the React client *and* owns all DigitalOcean access —
-the inference key never reaches the browser. Perception runs **client-side** (MediaPipe);
-the LLM and Postgres live behind the server. Full phased plan:
-**[docs/backend-plan.md](./docs/backend-plan.md)**.
+One monorepo, **one deployable**: Express (TypeScript) serves the React client *and* owns
+all DigitalOcean access — the inference key never reaches the browser. Perception is
+**client-side** (MediaPipe); LLM + Postgres sit behind the server.
 
-> The old `debrief/` Python backend was a throwaway test and has been removed. We build
-> the real backend from first principles — do not reference its contract.
+> The old `debrief/` Python backend was a throwaway test and has been removed. Do not
+> reference its contract. Fresh contract is `/v1` under `shared/contracts/`.
 
-**Build status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4
-code ✅ (rate limit, static SPA, Dockerfile, `.do/app.yaml`, CI). **App Platform live URL
-pending** — see [docs/phase-4.md](./docs/phase-4.md). Team status: [STATUS.md](./STATUS.md).
+**Build status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅
+**live** — https://wavelength-wxut4.ondigitalocean.app. Team status: [STATUS.md](./STATUS.md).
 
 ```
 ┌── Browser · React + MediaPipe (raw video/audio never leaves) ───────┐
@@ -76,69 +78,72 @@ pending** — see [docs/phase-4.md](./docs/phase-4.md). Team status: [STATUS.md]
                                            ▼
 ┌── DO App Platform · Express (TS) · :8080 ─────────────────────────────┐
 │  routes (zod) → services → repositories (Drizzle) → clients (Gradient)│
-│  serves client build · holds DO key · CORS locked · canned fallbacks  │
+│  serves client build · holds DO key · CORS locked · rate limits       │
+│  canned inference fallbacks · migrate on container start              │
 └──────────┬──────────────────────────────────┬────────────────────────┘
            ▼                                   ▼
    DO Gradient AI Inference           DO Managed Postgres (Drizzle)
 ```
 
-**Layering (each layer knows only the one below):** HTTP routes validate with Zod →
-services hold domain logic + deterministic metrics → repositories are the only place SQL
-lives (Drizzle) → clients wrap DO Gradient (`chat` / `stream` / `structured`).
-`shared/` holds the Zod schemas + inferred types = the wire contract client and server
-agree on.
+**Layering:** HTTP routes validate with Zod → services (metrics / nudge / debrief) →
+repositories (Drizzle only) → `clients/gradient` (`chat` / `stream` / `structured`).
+`shared/` = wire contract (build to `dist/` before server typecheck/test).
 
-**What exists today (Phases 0–4 code):** env + Pino + `AppError` + CORS + rate limits +
-`/health` + `/ready`; Drizzle repos; Gradient client; `shared/contracts` + services + `/v1`;
-static SPA serve (`CLIENT_DIST`); root `Dockerfile` + migrate entrypoint; `.do/app.yaml`;
-GitHub CI. **Pending:** App Platform app creation + live URL. Progress/history API deferred.
-
-### Gradient client surface (`server/src/clients/gradient.ts`)
+### Gradient client (`server/src/clients/gradient.ts`)
 
 | Function | Use |
 |---|---|
 | `chat({tier, prompt/messages, …})` | one-shot completions (default tier `fast`) |
 | `stream(…)` | async-generator text deltas → SSE debrief (default tier `smart`) |
-| `structured(zodSchema, {toolName, …})` | forced tool-call + Zod validate + 1 repair retry → typed object |
+| `structured(zodSchema, {toolName, …})` | forced tool-call + Zod + 1 repair retry |
 | `listModels()` | catalog probe |
 
-Models (env): `MODEL_FAST` = `anthropic-claude-haiku-4.5`, `MODEL_SMART` = `anthropic-claude-4.6-sonnet`.
+Models: `MODEL_FAST` = `anthropic-claude-haiku-4.5`, `MODEL_SMART` = `anthropic-claude-4.6-sonnet`.
 
-## File structure
+### DigitalOcean MCP
 
-### Current (as of Phase 4) — what is on disk
+Cursor has user-level DO MCP servers (`~/.cursor/mcp.json` — **not in git**). Use
+`digitalocean-apps` / `digitalocean-databases` to deploy; details in
+[docs/agent-handoff.md](./docs/agent-handoff.md). Reload Cursor if tools are missing.
+
+## File structure (current)
 
 ```
 wavelength/
-├── package.json              # npm workspaces: ["client","server","shared"]
+├── package.json                 # workspaces: client, server, shared
 ├── Dockerfile · .dockerignore · .do/app.yaml
 ├── .github/workflows/ci.yml
 ├── AGENTS.md · STATUS.md · README.md · BUILD_PLAN.md · docs/
 │
-├── client/                   # React app (Vite) — not yet wired to /v1
-├── shared/                   # domain + contracts (build → dist/)
+├── client/                      # React/Vite — NOT yet wired to /v1
+├── shared/                      # domain + contracts → npm run build -w shared
 └── server/
-    ├── docker-entrypoint.sh  # migrate → node dist/index.js
+    ├── docker-entrypoint.sh     # migrate → node dist/index.js
     └── src/
-        ├── http/middleware/  # requestId · errorHandler · cors · rateLimit
-        ├── http/static.ts    # CLIENT_DIST SPA
-        ├── http/routes/      # health · sessions · frames · nudge · debrief
-        ├── services/ · repositories/ · db/ · clients/gradient.ts
-        └── …
+        ├── index.ts · app.ts · spike.ts · logger.ts · errors.ts
+        ├── config/env.ts        # + CLIENT_DIST, MIGRATIONS_DIR
+        ├── http/
+        │   ├── middleware/      # requestId · errorHandler · cors · rateLimit
+        │   ├── static.ts · parse.ts · mappers.ts
+        │   └── routes/          # health · sessions · frames · nudge · debrief
+        ├── services/            # metrics · nudge · debrief · fallbacks
+        ├── repositories/        # sessions · frames
+        ├── db/                  # schema · client · migrate · migrations/
+        └── clients/gradient.ts
 ```
 
-**HTTP:** `/health`, `/ready`, `/v1/*`, plus static SPA when `CLIENT_DIST` is set.
-**Deploy:** push `main` → App Platform (after app created from `.do/app.yaml`). Guide:
-[docs/phase-4.md](./docs/phase-4.md).
+**HTTP:** `/health`, `/ready`, `/v1/*`, static SPA when `CLIENT_DIST` set.
 
-### Still open after Phase 4
+**Commands:** `npm run build -w shared` · `npm test` · `npm run db:migrate -w server` ·
+`npm run spike -w server` · `npm run build`.
 
-```
-# App Platform live URL + secrets in DO console
-# Peter: client → /v1 wiring
-# optional: GET /v1/progress
-```
+## Still open
 
-**Priorities / cut order** (see plan): P0 = camera → live engagement chart → nudge →
-debrief on a deployed URL. Cut under pressure in this order: pgvector → progress/history
-→ frame persistence. Never cut the debrief or the live nudge endpoint.
+- Peter: wire `client/` → `/v1`
+- Dinil: MediaPipe LIVE loop
+- Optional: `GET /v1/progress`
+- Tear down defunct `wavelength-brain-37j5z`
+- Link GitHub OAuth on DO for `deploy_on_push` (currently public git + manual redeploy)
+
+**Priorities / cut order:** Never cut debrief or live nudge. Cut under pressure:
+pgvector → progress/history → frame persistence.

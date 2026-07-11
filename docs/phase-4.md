@@ -1,9 +1,13 @@
 # Phase 4 — Harden + Deploy (implementation guide)
 
-> **Audience:** any agent or teammate picking up deploy. Phases 0–3 are done (`/v1` live
-> locally). This doc is the step-by-step to get Wavelength on DigitalOcean App Platform.
+> **Audience:** any agent or teammate picking up deploy. Phases 0–4 **code** are on `main`
+> (`/v1` + Docker + CI). This doc is how to get a **live** App Platform URL.
 >
-> Team status: [STATUS.md](../STATUS.md) · Backend SoT: [backend-plan.md](./backend-plan.md)
+> Handoff: [agent-handoff.md](./agent-handoff.md) · Status: [STATUS.md](../STATUS.md) ·
+> Backend SoT: [backend-plan.md](./backend-plan.md)
+>
+> **Cursor:** DigitalOcean MCP is configured at `~/.cursor/mcp.json` (user-level, not in git).
+> Prefer MCP `digitalocean-apps` / `digitalocean-databases` to create/update the app.
 
 ---
 
@@ -38,10 +42,11 @@ Ship the shell UI + live API first; wire the client in parallel.
 ## 1. Current baseline (what you start from)
 
 ```
-client/     React/Vite — builds to client/dist (default). Not yet calling /v1.
-shared/     Zod contracts — server already depends on "shared": "*"
-server/     Express on :8080 — /health, /ready, /v1/* done
-            No Dockerfile, no rate limit, no static serve, no CI, no .do/app.yaml
+client/     React/Vite — builds to client/dist. Not yet calling /v1.
+shared/     Zod contracts — build with `npm run build -w shared` (exports → dist/)
+server/     Express on :8080 — /health, /ready, /v1/*, rate limits, static SPA
+            Dockerfile + entrypoint + .do/app.yaml + CI ✅ on main
+            Live App Platform URL ❌ still pending
 ```
 
 **Env already validated** in [`server/src/config/env.ts`](../server/src/config/env.ts):
@@ -584,16 +589,20 @@ Push to `main` (or PR → merge) so App Platform `deploy_on_push` fires.
 
 ---
 
-## 17. Deploy (manual — once)
+## 17. Deploy (manual or MCP)
 
-Local agents may lack `doctl` / Docker. From a machine with DO access:
+Prefer **DigitalOcean MCP** in Cursor (`digitalocean-apps`, `digitalocean-databases`) when
+available — see [agent-handoff.md](./agent-handoff.md).
 
 ```bash
-# Option A: DO console — Create App → GitHub `main` → Dockerfile at repo root → set secrets
-# Option B:
+# Option A: MCP — list_apps / create_app / update from .do/app.yaml + set secrets
+# Option B: DO console — Create App → GitHub main → Dockerfile at repo root → set secrets
+# Option C:
 doctl apps create --spec .do/app.yaml
 # then set SECRET env: DIGITAL_OCEAN_MODEL_ACCESS_KEY, DATABASE_URL
 # set CORS_ORIGIN to https://<app>.ondigitalocean.app
 ```
 
-After first deploy, paste the live URL into [STATUS.md](../STATUS.md).
+After first deploy + smoke, paste the live URL into [STATUS.md](../STATUS.md).
+
+**Do not** reuse or resurrect `wavelength-brain-37j5z` (defunct Python app).
