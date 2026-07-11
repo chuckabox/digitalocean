@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Header from './components/Header';
+import LandingPage from './components/LandingPage';
 import LiveView from './components/LiveView';
 import DebriefView from './components/DebriefView';
 import StatsView from './components/StatsView';
 import TimelineView from './components/TimelineView';
-import LandingPage from './components/LandingPage';
 import { SessionProvider, useSession } from './session/SessionContext';
 
 const MODAL_CONTENT = {
@@ -36,10 +36,10 @@ function AppShell() {
       />
 
       {phase === 'home' && (
-        <LandingPage 
-          onEnterApp={() => void startSession()} 
-          starting={starting} 
-          startError={startError} 
+        <LandingPage
+          onEnterApp={() => void startSession()}
+          starting={starting}
+          startError={startError}
         />
       )}
       {phase === 'live' && (

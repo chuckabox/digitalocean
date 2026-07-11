@@ -12,10 +12,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/v1': {
-        target: 'https://wavelength-wxut4.ondigitalocean.app',
-        changeOrigin: true,
-      },
+      '/v1': 'http://localhost:8080',
       '/health': 'http://localhost:8080',
       '/ready': 'http://localhost:8080',
     },
