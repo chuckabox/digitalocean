@@ -1,6 +1,9 @@
 {
   "name": "wavelength",
   "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace=client"
+  },
   "workspaces": [
     "client",
     "server",
