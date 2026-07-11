@@ -50,7 +50,8 @@ def add_cors(resp):
 
 
 @app.route("/api/debrief", methods=["OPTIONS"])
-def debrief_preflight():
+@app.route("/api/nudge", methods=["OPTIONS"])
+def cors_preflight():
     return ("", 204)
 
 MOCK = os.getenv("WAVELENGTH_MOCK", "").strip() not in ("", "0", "false")
@@ -103,6 +104,24 @@ def debrief():
     if store is not None:
         store.add(result, transcript.get("conversation_id"))
     return jsonify(result)
+
+
+@app.post("/api/nudge")
+def nudge():
+    """Phrase a live nudge. Body: {confidence, evidence:[...], context?}. LIVE state (State 2).
+
+    Mock mode returns a canned nudge so the live demo works without a key.
+    """
+    payload = request.get_json(silent=True) or {}
+    if MOCK:
+        from nudge import _fallback_nudge
+        return jsonify(_fallback_nudge(payload))
+    try:
+        from nudge import generate_nudge
+
+        return jsonify(generate_nudge(payload))
+    except (RuntimeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 502
 
 
 @app.get("/api/progress")

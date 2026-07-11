@@ -31,6 +31,21 @@ The debrief already fuses those with the transcript and tags moments `source: "b
 live signal layer and our debrief are the same pipeline end to end — no glue needed beyond
 passing that array.
 
+## State 2 (LIVE) nudge endpoint is ALSO built for you
+Your event engine stays client-side (MediaPipe -> z-score + cooldown decides WHEN to fire and
+gathers evidence). It just calls this to PHRASE the nudge (~1.3s warm, hedged, no emotion words):
+```
+POST https://wavelength-brain-37j5z.ondigitalocean.app/api/nudge
+body: { "confidence": "medium",
+        "evidence": ["gaze away 9s", "smile fading", "you've held the floor 84s"],
+        "context": "catching up with a friend" }   // context optional
+-> { "text": "Maybe ask them about something they're interested in?",
+     "confidence": "medium", "evidence": [...] }
+```
+So you write NO backend at all - both `/api/nudge` (LIVE) and `/api/debrief` (DEBRIEF) are served
+from the one deployed DO app, with the inference key already configured. Decision confirmed:
+**your React frontend calls this Python API; do not build an Express proxy.**
+
 ## The API your React frontend calls for State 3 (CORS is open)
 ```
 POST https://wavelength-brain-37j5z.ondigitalocean.app/api/debrief?model=anthropic-claude-haiku-4.5&history=1
