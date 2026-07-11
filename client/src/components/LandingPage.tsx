@@ -1,15 +1,12 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { DotLottiePlayer } from '@dotlottie/react-player'
 import { Button } from './ui/button'
-import PitchDeck from './PitchDeck'
 
 interface LandingPageProps {
   onEnterApp: () => void
-  starting?: boolean
-  startError?: string | null
 }
 
-export default function LandingPage({ onEnterApp, starting = false, startError = null }: LandingPageProps) {
+export default function LandingPage({ onEnterApp }: LandingPageProps) {
   const reduce = useReducedMotion()
 
   return (
@@ -28,20 +25,9 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
           <p className="font-sans text-[18px] text-ink-2 leading-relaxed max-w-[45ch] mb-10">
             A consented social co-pilot that helps you read social cues during one-on-one conversations.
           </p>
-          <Button
-            variant="primary"
-            size="lg"
-            className="rounded-full px-8 font-medium"
-            disabled={starting}
-            onClick={onEnterApp}
-          >
-            {starting ? 'Starting…' : 'Start Session'}
+          <Button variant="primary" size="lg" className="rounded-full px-8 font-medium" onClick={onEnterApp}>
+            Start Session
           </Button>
-          {startError && (
-            <p className="mt-3 text-sm text-alert" role="alert">
-              {startError}
-            </p>
-          )}
         </motion.div>
 
         {/* Illustration */}
@@ -60,10 +46,7 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
       </section>
 
       {/* Core Features */}
-      <section className="w-[100vw] relative left-[50%] right-[50%] -mx-[50vw] bg-paper-2 py-24 px-7 overflow-hidden">
-        <div className="absolute inset-0 -z-10 pointer-events-none opacity-20 flex items-center justify-center" aria-hidden="true">
-          <DotLottiePlayer src="/secondwave.lottie" autoplay loop style={{ width: '100%', height: '100%' }} />
-        </div>
+      <section className="w-[100vw] relative left-[50%] right-[50%] -mx-[50vw] bg-paper-2 py-24 px-7">
         <div className="max-w-[1160px] mx-auto">
           <h2 className="font-sans text-[28px] md:text-[32px] tracking-tight font-medium text-ink mb-16 text-center">
             Core features
@@ -71,7 +54,7 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {[
             {
-              title: 'Live Suggestions',
+              title: 'Live Nudges',
               desc: 'Gentle suggestions delivered privately in the moment when meaningful shifts occur.',
             },
             {
@@ -138,7 +121,7 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: 'Start Session', desc: 'Secure mutual consent and start the camera. Analysis runs entirely locally on your device.' },
-              { num: '02', title: 'Get Live Suggestions', desc: 'Receive discreet, gentle suggestions in the moment when meaningful shifts occur in the conversation.' },
+              { num: '02', title: 'Get Live Nudges', desc: 'Receive discreet, gentle suggestions in the moment when meaningful shifts occur in the conversation.' },
               { num: '03', title: 'Review the Debrief', desc: 'After the session, review an annotated timeline and a plain-language summary of how it went.' }
             ].map((step, i) => (
               <motion.div
@@ -157,9 +140,6 @@ export default function LandingPage({ onEnterApp, starting = false, startError =
           </div>
         </div>
       </section>
-
-      {/* Pitch deck — "how it actually works" (appended for the hackathon) */}
-      <PitchDeck />
 
       {/* Founders */}
       <section className="relative w-[100vw] left-[50%] right-[50%] -mx-[50vw] pt-24 pb-32 overflow-hidden">
