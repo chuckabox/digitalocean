@@ -80,6 +80,23 @@ validity, consent, why-not-real-time, cost-per-debrief answers). Don't write a t
    cross-stack is fine over HTTP; (b) port the ~200 lines of debrief logic into your Node service.
    Recommend (a) to protect the clock. Either way, the prompt/schema/metrics are done — reuse them.
 
+## For Peter (React frontend on `peter-main-2`)
+Your UI shell is good — Live / Timeline / Stats map cleanly onto LIVE / DEBRIEF / progress. One
+gap: **the app renders static `src/data/sessions.ts` and does not call the backend yet.** The
+backend is live and real; wiring it is small. A typed, dependency-free client is ready for you:
+**`debrief/wavelength-client.ts`** — copy to `src/lib/`. Mapping:
+
+| Your view | Call | Returns |
+|---|---|---|
+| LiveView (during convo) | `postFrames(convId, frames)` every ~5s, `getNudge({confidence, evidence})` when your engine fires | nudge text ~1.5s |
+| End Session → Timeline | `framesToVisualSignals(frames)` then `getDebrief(transcript, {history:true})` | full `Debrief` (summary, moments[], patterns[], what_worked, next_time) |
+| StatsView | `getProgress()` | cross-session metric trends |
+
+Your `SessionEvent[]` shape is close to our `Moment[]` — map `moment.source` → your `channel`,
+`moment.confidence` → your kind/severity, `moment.observation`+`try_instead` → your event body.
+Keep `sessions.ts` as the offline fallback (rung 3). `debrief/viewer.html` renders the real
+`Debrief` shape if you want a reference for fields + styling.
+
 ## Timeline note
 Your plan assumes an 8-hour, hour-6.5-freeze event. Confirm the actual window with Connor — earlier
 context suggested longer. It changes how much of the LIVE half is safe to attempt.
