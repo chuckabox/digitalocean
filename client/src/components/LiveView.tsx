@@ -49,51 +49,6 @@ function pct(n: number | undefined) {
   return Math.round((n ?? 0) * 100);
 }
 
-/** A tiny pulse trace. Uses the real detrended rPPG waveform when present,
- *  otherwise draws a modeled sine at the given BPM (synthetic mode). */
-function PulseSparkline({
-  waveform,
-  bpm,
-  phase,
-  active,
-}: {
-  waveform: number[];
-  bpm: number | null;
-  phase: number;
-  active: boolean;
-}) {
-  const W = 320;
-  const H = 44;
-  let vals = waveform;
-  if (vals.length < 8) {
-    const f = (bpm ?? 72) / 60;
-    vals = Array.from({ length: 72 }, (_, i) => {
-      const tt = (i / 72) * 3;
-      return Math.sin(2 * Math.PI * f * tt + phase);
-    });
-  }
-  const n = vals.length;
-  const pts = vals
-    .map((v, i) => {
-      const x = (i / (n - 1)) * W;
-      const y = H / 2 - v * (H / 2 - 4);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-11" preserveAspectRatio="none" aria-hidden>
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="var(--color-alert)"
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-        opacity={active ? 0.95 : 0.4}
-      />
-    </svg>
-  );
-}
-
 function formatTime(t: number) {
   const m = Math.floor(t / 60);
   const s = Math.floor(t % 60);
@@ -193,12 +148,13 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     [appendFrames, autoNudge, engineOpts, fireNudge],
   );
 
-  const wantSynthetic =
-    forceSynthetic() || videoSource !== 'camera' || !sessionId;
+  const forcedSynthetic = forceSynthetic();
+  /** Show Tracking / Signals / State numbers only with camera (or ?synthetic=1). */
+  const showLiveData = forcedSynthetic || videoSource === 'camera';
   const wantMediaPipe =
-    Boolean(sessionId) && videoSource === 'camera' && !forceSynthetic();
+    Boolean(sessionId) && videoSource === 'camera' && !forcedSynthetic;
 
-  const { status: mpStatus, error: mpError, pulseRef } = useMediaPipe({
+  const { status: mpStatus, error: mpError } = useMediaPipe({
     enabled: wantMediaPipe,
     video: videoEl,
     startedAtMs,
@@ -207,21 +163,28 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     meshEnabled: meshOn,
   });
 
-  const syntheticOn =
+  // Synthetic only for demos/clip, or while camera waits on MediaPipe — never when idle.
+  const syntheticEnabled =
     Boolean(sessionId) &&
-    (wantSynthetic || mpStatus === 'error' || (wantMediaPipe && mpStatus !== 'ready'));
+    (forcedSynthetic ||
+      videoSource === 'clip' ||
+      (videoSource === 'camera' && (!wantMediaPipe || mpStatus !== 'ready')));
 
-  useSyntheticLoop(syntheticOn && (wantSynthetic || mpStatus !== 'ready'), onFrame);
+  useSyntheticLoop(syntheticEnabled, onFrame);
   useFrameIngest(sessionId, frames);
   useSpeech(Boolean(sessionId), startedAtMs, appendTranscript);
 
-  const sourceLabel = forceSynthetic()
+  const sourceLabel = forcedSynthetic
     ? 'synthetic (?synthetic=1)'
     : videoSource === 'camera' && mpStatus === 'ready'
       ? 'MediaPipe · 5 Hz'
       : videoSource === 'camera' && mpStatus === 'loading'
         ? 'MediaPipe loading…'
-        : 'synthetic fallback · 5 Hz';
+        : videoSource === 'camera'
+          ? 'synthetic fallback · 5 Hz'
+          : videoSource === 'clip'
+            ? 'clip'
+            : 'camera off';
 
   const handleStartCamera = async () => {
     try {
@@ -242,12 +205,14 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     stopTracks();
     setVideoEl(null);
     setVideoSource('none');
+    setLatest(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     stopTracks();
+    setLatest(null);
     const url = URL.createObjectURL(file);
     setClipUrl(url);
     setVideoSource('clip');
@@ -257,6 +222,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     if (clipUrl) URL.revokeObjectURL(clipUrl);
     setClipUrl(null);
     setVideoSource('none');
+    setLatest(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -286,52 +252,43 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     return { ...last, id: toastId };
   }, [nudges, toastId]);
 
-  const confPct =
-    latest?.confidence === 'high' ? 88 : latest?.confidence === 'medium' ? 64 : latest ? 42 : 0;
+  const liveFrame = showLiveData ? latest : null;
 
-  const body = useMemo(() => {
-    const bpmRaw = latest?.signals?.bpm;
-    const arousal = latest?.signals?.arousal ?? null;
-    const conf = latest?.signals?.pulseConf ?? 0;
-    const confLabel = conf > 0.5 ? 'high' : conf > 0.25 ? 'medium' : 'low';
-    // Live divergence hint: face reads steady/positive while the body is aroused.
-    const faceCalm = (latest?.emotions?.positive ?? 0) + (latest?.emotions?.calm ?? 0);
-    const diverging = arousal != null && arousal > 0.62 && faceCalm > 0.5;
-    return {
-      bpm: typeof bpmRaw === 'number' ? Math.round(bpmRaw) : null,
-      arousal,
-      conf,
-      confLabel,
-      diverging,
-    };
-  }, [latest]);
+  const confPct =
+    liveFrame?.confidence === 'high'
+      ? 88
+      : liveFrame?.confidence === 'medium'
+        ? 64
+        : liveFrame
+          ? 42
+          : 0;
 
   const signalRows = [
-    { label: 'Engagement', width: pct(latest?.engagement), variant: 'accent' },
-    { label: 'Attention', width: pct(latest?.attention), variant: 'positive' },
-    { label: 'Smile', width: pct(latest?.signals?.smile), variant: 'positive' },
-    { label: 'Lean-in', width: pct(latest?.signals?.lean), variant: 'accent' },
+    { label: 'Engagement', width: pct(liveFrame?.engagement), variant: 'accent' },
+    { label: 'Attention', width: pct(liveFrame?.attention), variant: 'positive' },
+    { label: 'Smile', width: pct(liveFrame?.signals?.smile), variant: 'positive' },
+    { label: 'Lean-in', width: pct(liveFrame?.signals?.lean), variant: 'accent' },
     {
       label: 'Gaze away',
-      width: pct(latest?.signals?.gazeAway),
-      variant: (latest?.signals?.gazeAway ?? 0) > 0.55 ? 'alert' : 'accent',
+      width: pct(liveFrame?.signals?.gazeAway),
+      variant: (liveFrame?.signals?.gazeAway ?? 0) > 0.55 ? 'alert' : 'accent',
     },
   ];
 
   const emotionRows = useMemo(() => {
-    if (!latest?.emotions) return [] as Array<{ label: string; p: number }>;
+    if (!liveFrame?.emotions) return [] as Array<{ label: string; p: number }>;
     return (
       [
-        { label: 'calm', p: latest.emotions.calm },
-        { label: 'positive', p: latest.emotions.positive },
-        { label: 'tense', p: latest.emotions.tense },
-        { label: 'uncertain', p: latest.emotions.uncertain },
+        { label: 'calm', p: liveFrame.emotions.calm },
+        { label: 'positive', p: liveFrame.emotions.positive },
+        { label: 'tense', p: liveFrame.emotions.tense },
+        { label: 'uncertain', p: liveFrame.emotions.uncertain },
       ] as Array<{ label: string; p: number }>
     ).sort((a, b) => b.p - a.p);
-  }, [latest]);
+  }, [liveFrame]);
 
   const talkStats = useMemo(() => {
-    if (frames.length < 5 || !latest) return null;
+    if (!showLiveData || frames.length < 5 || !liveFrame) return null;
     const window = frames.slice(-50);
     const talkingFrac =
       window.filter((f) => (f.signals?.talking ?? 0) > 0.35).length / window.length;
@@ -341,7 +298,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
       else break;
     }
     return { talkShare: talkingFrac, floorSec: mono };
-  }, [frames, latest]);
+  }, [frames, liveFrame, showLiveData]);
 
   const recentNudges = [...nudges].reverse().slice(0, 5);
 
@@ -370,7 +327,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
             {videoSource === 'none' && (
               <div className="text-center p-6">
                 <p className="text-[15px] font-medium text-ink-2 mb-0.5">Camera feed</p>
-                <p className="font-mono text-xs text-ink-3">optional — signals run synthetically</p>
+                <p className="font-mono text-xs text-ink-3">start camera to begin tracking</p>
               </div>
             )}
             <video
@@ -441,87 +398,42 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
             <CardHeader>
               <CardTitle>Tracking</CardTitle>
               <CardDescription>
-                {latest ? `t = ${formatTime(latest.t)} · 5 Hz` : 'warming up'}
+                {liveFrame
+                  ? `t = ${formatTime(liveFrame.t)} · 5 Hz`
+                  : showLiveData
+                    ? 'warming up'
+                    : 'camera off'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3.5">
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-ink-2 mb-1.5">
-                    Confidence{' '}
-                    <Badge size="sm" variant="accent" className="ml-1">
-                      {latest?.confidence ?? '—'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <BarTrack width={confPct} variant="accent" />
-                    <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
-                      {confPct}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {talkStats && (
-                <p className="font-mono text-[11px] text-ink-2 mt-3 leading-relaxed">
-                  Floor: you ~{Math.round(talkStats.talkShare * 100)}% of last 10s
-                  {talkStats.floorSec >= 1
-                    ? ` · holding ~${Math.round(talkStats.floorSec)}s`
-                    : ''}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Body</CardTitle>
-              <CardDescription>rPPG · pulse from webcam · experimental</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {body.bpm == null ? (
-                <p className="text-[13px] text-ink-3">
-                  Reading pulse from skin colour… hold still ~6s.
-                </p>
+              {!showLiveData ? (
+                <p className="text-[13px] text-ink-3">Start the camera to begin tracking.</p>
               ) : (
                 <>
-                  <div className="flex items-end justify-between gap-3">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="font-mono text-[34px] leading-none font-light text-ink tabular-nums">
-                        {body.bpm}
-                      </span>
-                      <span className="font-mono text-xs text-ink-3">bpm</span>
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] text-ink-2 mb-1.5">
+                        Confidence{' '}
+                        <Badge size="sm" variant="accent" className="ml-1">
+                          {liveFrame?.confidence ?? '—'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <BarTrack width={confPct} variant="accent" />
+                        <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
+                          {confPct}%
+                        </span>
+                      </div>
                     </div>
-                    <Badge
-                      size="sm"
-                      variant={body.confLabel === 'low' ? 'alert' : 'accent'}
-                    >
-                      {body.confLabel}
-                    </Badge>
                   </div>
-                  <PulseSparkline
-                    waveform={pulseRef?.current.waveform ?? []}
-                    bpm={body.bpm}
-                    phase={(latest?.t ?? 0) * 6}
-                    active={body.conf > 0.25}
-                  />
-                  <div className="grid grid-cols-[88px_1fr_40px] items-center gap-2.5 mt-1">
-                    <span className="text-[13px] text-ink-2">Arousal</span>
-                    <BarTrack
-                      width={pct(body.arousal ?? 0.5)}
-                      variant={(body.arousal ?? 0) > 0.62 ? 'alert' : 'accent'}
-                    />
-                    <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
-                      {pct(body.arousal ?? 0.5)}%
-                    </span>
-                  </div>
-                  {body.diverging && (
-                    <p className="font-mono text-[11px] text-alert mt-2.5 leading-relaxed">
-                      face steady · body active — worth a look
+                  {talkStats && (
+                    <p className="font-mono text-[11px] text-ink-2 mt-3 leading-relaxed">
+                      Floor: you ~{Math.round(talkStats.talkShare * 100)}% of last 10s
+                      {talkStats.floorSec >= 1
+                        ? ` · holding ~${Math.round(talkStats.floorSec)}s`
+                        : ''}
                     </p>
                   )}
-                  <p className="font-mono text-[10px] text-ink-3 mt-2 leading-relaxed">
-                    Involuntary signal · relative to their own baseline · not a diagnosis
-                  </p>
                 </>
               )}
             </CardContent>
@@ -533,17 +445,21 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               <CardDescription>observable descriptors</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-3.5">
-                {signalRows.map((s) => (
-                  <div key={s.label} className="grid grid-cols-[88px_1fr_40px] items-center gap-2.5">
-                    <span className="text-[13px] text-ink-2">{s.label}</span>
-                    <BarTrack width={s.width} variant={s.variant} />
-                    <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
-                      {s.width}%
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {!showLiveData ? (
+                <p className="text-[13px] text-ink-3">Waiting for camera…</p>
+              ) : (
+                <div className="flex flex-col gap-3.5">
+                  {signalRows.map((s) => (
+                    <div key={s.label} className="grid grid-cols-[88px_1fr_40px] items-center gap-2.5">
+                      <span className="text-[13px] text-ink-2">{s.label}</span>
+                      <BarTrack width={s.width} variant={s.variant} />
+                      <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">
+                        {s.width}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -553,8 +469,10 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               <CardDescription>experimental · soft distribution · not a diagnosis</CardDescription>
             </CardHeader>
             <CardContent>
-              {emotionRows.length === 0 ? (
-                <p className="text-[13px] text-ink-3">Waiting for face signals…</p>
+              {!showLiveData || emotionRows.length === 0 ? (
+                <p className="text-[13px] text-ink-3">
+                  {!showLiveData ? 'Waiting for camera…' : 'Waiting for face signals…'}
+                </p>
               ) : (
                 <div className="flex flex-col gap-3">
                   {emotionRows.map(({ label, p }) => (
@@ -576,7 +494,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
               <div className="mt-4 flex flex-col gap-2">
                 <Button
                   variant="primary"
-                  disabled={!latest || nudgeBusy}
+                  disabled={!liveFrame || nudgeBusy}
                   onClick={() => void handleNudge()}
                 >
                   {nudgeBusy ? 'Requesting…' : 'Request nudge'}
