@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #F7F5F0;
+  --color-paper-2: #EFECE4;
+  --color-ink: #26241F;
+  --color-ink-2: #6E6857;
+  --color-ink-3: #A39D8E;
+  --color-rule: #DAD5C8;
+  --color-rule-strong: #26241F;
+  --color-accent: #2F4E87;
+  --color-accent-soft: #E4E9F4;
+  --color-alert: #B04A3C;
+  --color-alert-soft: #F2E1DD;
+  --color-warn: #A37F2E;
+  --color-warn-soft: #F0E8D5;
+  --color-positive: #4F8A63;
+  --color-positive-soft: #E2EDE4;
+  --color-neutral-soft: #EAE6DC;
+  --color-bar-track: #E7E3D8;
+  --font-sans: "Lexend", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+@keyframes wave-draw {
+  to { stroke-dashoffset: 0; }
+}
