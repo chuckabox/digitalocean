@@ -5,33 +5,32 @@
 
 ## The 3-minute script
 
-**[0:00-0:30] Hook (tell the real story, slow down)**
-> For most of us, navigating a conversation is intuitive. But for millions of neurodivergent people, the unwritten rules of networking are invisible. We have an autistic friend who is brilliantly bright. Last week at a startup networking event, we watched her introduce herself to someone. Within the first 15 seconds, she told him she was autistic. It was honest, but the timing caught him totally off guard. He tried to understand, but the conversation just awkwardly fizzled out after a minute. She could *feel* the tension, but couldn't read *why* it happened. It shook her confidence so much she went home 30 minutes into a 4-hour event. It's moments like these that make us realize there has to be a better way. She knew something went wrong, but nobody ever tells you exactly what it was. So we built the missing translator.
+**[0:00-0:45] The Problem & The Solution**
+> Last week, we watched a brilliant autistic friend of ours introduce herself at a startup event. Within 15 seconds, she blurted out that she was autistic. It caught the other person completely off guard, the conversation fizzled out, and she went home early, completely defeated.
+> 
+> The problem is that for millions of neurodivergent people, the unwritten rules of networking are invisible. They know when an interaction fails, but no one ever tells them *why*.
+> 
+> To solve this, we built Wavelength: a private, consented social co-pilot. 
+> *[Show the app]* 
+> Wavelength ensures total privacy. Video never leaves this laptop—only text transcripts run in the cloud on DigitalOcean. *[Click 'I Consent' on screen]*
 
----
-### 🎬 LIVE DEMO STARTS HERE (1 minute, 55 seconds total)
+**[0:45-1:45] Demo Part 1: The Live Skit**
+> *[User talks slightly too long about something dry. Partner disengages — glances away, checks phone, face goes flat. Pause for 5 seconds]*
+> Watch the dashboard. The engagement line falls live. Wavelength immediately sends a highly-hedged, evidence-backed nudge: "72% confidence you've held the floor too long."
+> *[User clicks the nudge and asks Partner a question. Partner lights up; the line recovers.]*
+> That's how we help in the moment. Wavelength suggests, it never diagnoses.
 
-**[0:30-0:45] Demo Step 1: Consent Beat**
-> *[Show the opening screen of the app]*
-> We built Wavelength. A consented social co-pilot. First, visible consent. The video never leaves this laptop — only the understanding runs in the cloud, on DigitalOcean. *[Click 'I Consent' on screen]*
-
-**[0:45-1:45] Demo Step 2: The Live Skit (let it breathe)**
-> Here's a real conversation. 
-> *[User talks slightly too long about something dry. Partner disengages on cue — glances away, checks phone, face goes flat. Pause for 5 seconds to let the silence land]*
-> Watch the dashboard. The engagement line falls live in front of you. And there's the nudge: a highly hedged suggestion, 72% confidence, backed by evidence.
-> *[User reads it, clicks it, and asks Partner a question. Partner lights up; the line recovers.]*
-> That's the wow. It suggests, never diagnoses.
-
-**[1:45-2:25] Demo Step 3: The Payoff (Debrief)**
+**[1:45-2:25] Demo Part 2: The AI Debrief**
 > *[Click 'End Session' on the app]*
-> We hit end. The conversation you just watched replays as an annotated timeline, and Claude's debrief streams in, generated live on DigitalOcean Gradient. Notice it never says you did anything wrong. It says the content was fine, but the timing made it land flat, and offers a concrete redo. It also caught that you held the floor for 84 seconds and didn't ask a question. Concrete, honest, and something you can actually practice before an interview.
+> The real magic is the debrief. The conversation replays as an annotated timeline, generated live on DigitalOcean Gradient. Notice it never scolds you. It tells you the content was fine, but the timing landed flat, and offers a concrete redo. Concrete, honest feedback you can practice before your next interview.
 
 ### 🎬 LIVE DEMO ENDS HERE
 ---
 
-**[2:25-3:00] Tech + why DigitalOcean (know the audience)**
-> Everything you just watched ran on DigitalOcean: the Express/TypeScript backend on App Platform, the reasoning on Gradient Inference — Claude Haiku — and every conversation lands in Managed Postgres, so Wavelength learns your recurring patterns. We compute the hard numbers locally so the coaching is grounded in facts, not vibes.
-> *[Optional flex: Click the dropdown in the UI to swap the model live]* One dropdown, and the same debrief re-runs on Claude Sonnet — watch the reads get sharper. One key, any model. That's their platform doing the flexing. Wavelength turns every awkward conversation into the one lesson nobody gave you.
+**[2:25-3:00] Tech Stack & Closing**
+> To make this work seamlessly, we built the entire infrastructure on DigitalOcean. We host our Node backend on App Platform, store user memory in Managed Postgres, and use DigitalOcean Gradient AI Inference to power the reasoning. 
+> We run Claude Haiku 4.5 for real-time speed, and because we are on Gradient, we can swap to Claude 4.6 Sonnet instantly with one dropdown for deep analysis. 
+> Wavelength turns every awkward conversation into the one lesson nobody gave you. Thank you.
 
 ## Q&A prep (the questions judges will actually ask)
 
