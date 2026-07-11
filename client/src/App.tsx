@@ -42,6 +42,15 @@ export default function App() {
           {view === 'timeline' && <TimelineView />}
         </motion.div>
       </AnimatePresence>
+      <footer className="mt-16 pt-8 border-t border-rule text-center">
+        <div className="max-w-xl mx-auto">
+          <h3 className="text-sm font-medium text-ink-2 mb-2">Privacy FAQ</h3>
+          <p className="text-xs text-ink-3 leading-relaxed">
+            We don't record or store your data. We only perform live real-time analysis on your device. 
+            If you upload a clip, it gets analyzed locally in memory but is never saved or transmitted.
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

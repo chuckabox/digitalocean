@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
@@ -70,6 +71,75 @@ function AudioMeter({
 }
 
 export default function LiveView({ onGoToTimeline }: LiveViewProps) {
+  const [videoSource, setVideoSource] = useState<'none' | 'camera' | 'clip'>('none')
+  const [clipUrl, setClipUrl] = useState<string | null>(null)
+  const [isScanning, setIsScanning] = useState(false)
+  
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleStartCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+      setVideoSource('camera')
+      setIsScanning(true)
+    } catch (err) {
+      console.error("Error accessing camera:", err)
+      alert("Could not access camera. Please check permissions.")
+    }
+  }
+
+  const handleStopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach(track => track.stop())
+      videoRef.current.srcObject = null
+    }
+    setVideoSource('none')
+    setIsScanning(false)
+  }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setClipUrl(url)
+      setVideoSource('clip')
+      setIsScanning(false)
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream
+        stream.getTracks().forEach(track => track.stop())
+        videoRef.current.srcObject = null
+      }
+    }
+  }
+
+  const handleClearClip = () => {
+    if (clipUrl) {
+      URL.revokeObjectURL(clipUrl)
+    }
+    setClipUrl(null)
+    setVideoSource('none')
+    setIsScanning(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleScanClip = () => {
+    setIsScanning(true)
+    if (videoRef.current) {
+      videoRef.current.play()
+    }
+  }
+
   return (
     <section>
       <div className="mb-[26px]">
@@ -82,21 +152,61 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
       <div className="grid grid-cols-[1fr_380px] gap-10 items-start max-[900px]:grid-cols-1">
         {/* Camera */}
         <div className="flex flex-col gap-3.5">
-          <div className="aspect-[4/3] bg-paper-2 border border-rule rounded-[2px] flex items-center justify-center">
-            <div className="text-center p-6">
-              <div className="mb-3">
-                <svg viewBox="0 0 24 24" className="w-[30px] h-[30px] stroke-ink-3 fill-none" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="6" width="15" height="13" rx="1" />
-                  <path d="M17 10l4-2.5v9L17 14" />
-                </svg>
+          <div className="aspect-[4/3] bg-paper-2 border border-rule rounded-[2px] flex items-center justify-center relative overflow-hidden">
+            {videoSource === 'none' && (
+              <div className="text-center p-6">
+                <div className="mb-3">
+                  <svg viewBox="0 0 24 24" className="w-[30px] h-[30px] stroke-ink-3 fill-none mx-auto" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="15" height="13" rx="1" />
+                    <path d="M17 10l4-2.5v9L17 14" />
+                  </svg>
+                </div>
+                <p className="text-[15px] font-medium text-ink-2 mb-0.5">Camera feed</p>
+                <p className="font-mono text-xs text-ink-3">press start to begin reading</p>
               </div>
-              <p className="text-[15px] font-medium text-ink-2 mb-0.5">Camera feed</p>
-              <p className="font-mono text-xs text-ink-3">press start to begin reading</p>
-            </div>
+            )}
+            
+            <video
+              ref={videoRef}
+              autoPlay={videoSource === 'camera'}
+              muted={videoSource === 'camera'}
+              controls={videoSource === 'clip'}
+              src={videoSource === 'clip' && clipUrl ? clipUrl : undefined}
+              className={`w-full h-full ${videoSource === 'clip' ? 'object-contain bg-black' : 'object-cover'} ${videoSource === 'none' ? 'hidden' : 'block'}`}
+              playsInline
+            />
           </div>
+          
+          <input 
+            type="file" 
+            accept="video/*" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+          />
+
           <div className="flex gap-2.5">
-            <Button variant="primary" className="flex-1">Start</Button>
-            <Button variant="default" className="flex-1">Upload Clip</Button>
+            {videoSource === 'none' && (
+              <>
+                <Button variant="primary" className="flex-1" onClick={handleStartCamera}>Start Live Camera</Button>
+                <Button variant="default" className="flex-1" onClick={handleUploadClick}>Upload Clip</Button>
+              </>
+            )}
+            
+            {videoSource === 'camera' && (
+              <Button variant="outline" className="flex-1 text-alert border-alert/20 hover:bg-alert/10" onClick={handleStopCamera}>
+                Stop Camera
+              </Button>
+            )}
+
+            {videoSource === 'clip' && (
+              <>
+                <Button variant="primary" className="flex-1" onClick={handleScanClip} disabled={isScanning}>
+                  {isScanning ? 'Scanning...' : 'Scan Clip'}
+                </Button>
+                <Button variant="default" className="flex-1" onClick={handleClearClip}>Clear Clip</Button>
+              </>
+            )}
           </div>
         </div>
 
