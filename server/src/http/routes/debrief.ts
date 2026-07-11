@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { DebriefRequestSchema, type DebriefSseEvent } from 'shared';
 import { streamDebrief } from '../../services/debrief.js';
 import { asyncHandler, parseBody } from '../parse.js';
+import { inferenceLimiter } from '../middleware/rateLimit.js';
 
 export const debriefRouter: Router = Router();
 
@@ -11,6 +12,7 @@ function writeSse(res: import('express').Response, event: DebriefSseEvent): void
 
 debriefRouter.post(
   '/debrief',
+  inferenceLimiter,
   asyncHandler(async (req, res) => {
     const body = parseBody(DebriefRequestSchema, req.body ?? {});
 

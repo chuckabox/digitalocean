@@ -2,11 +2,21 @@
   "name": "wavelength",
   "private": true,
   "scripts": {
-    "dev": "npm run dev --workspace=client"
+    "dev": "npm run dev --workspace=client",
+    "build:shared": "npm run build -w shared",
+    "typecheck": "npm run build -w shared && npm run typecheck -w server",
+    "test": "npm run build -w shared && npm test -w server",
+    "build": "npm run build -w shared && npm run build -w client && npm run build -w server"
   },
   "workspaces": [
     "client",
     "server",
     "shared"
-  ]
+  ],
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.19.12": true,
+    "esbuild@0.21.5": true,
+    "esbuild@0.18.20": true
+  }
 }

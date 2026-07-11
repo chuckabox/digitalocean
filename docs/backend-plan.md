@@ -4,8 +4,9 @@
 > was a throwaway test and has been removed — do not reference its contract. This plan is
 > the source of truth for backend work.
 >
-> **Status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅. **Next: Phase 4**
-> (harden + deploy). Live team status: [STATUS.md](../STATUS.md).
+> **Status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 code ✅.
+> **App Platform live URL pending** (create from `.do/app.yaml`). Guide: [phase-4.md](./phase-4.md).
+> Live team status: [STATUS.md](../STATUS.md).
 
 ## Decisions (locked)
 
@@ -127,10 +128,12 @@ exhaustion→throw) + live integration (`chat`, `structured`, `stream`, `listMod
 - Routes under `/v1`: sessions, frames, nudge, debrief. Progress/history **deferred**.
 - Hermetic tests: metrics, nudge/debrief fallbacks, route Zod validation + SSE.
 
-### Phase 4 — Hardening + deploy ← NEXT
-- Locked CORS (done), rate limiting, structured request logs (partial), finalized Dockerfile,
-  DO App Platform spec, CI (typecheck + tests, migrate on release), end-to-end integration
-  pass, serve client build from Express.
+### Phase 4 — Hardening + deploy ✅ CODE DONE (live URL pending)
+- Rate limiting on `/v1` (stricter on nudge/debrief); `trust proxy` for App Platform.
+- Express serves `CLIENT_DIST` with SPA fallback.
+- Root `Dockerfile` + `server/docker-entrypoint.sh` (migrate → start); `.dockerignore`.
+- `.do/app.yaml` + GitHub Actions CI (typecheck + hermetic tests).
+- **Still do:** create App Platform app, set secrets, smoke live URL — [phase-4.md](./phase-4.md).
 
 ## Cut order under time pressure
 pgvector / semantic recall → progress/history → frame persistence. **Never cut** the

@@ -20,6 +20,7 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.36.4",
     "express": "^5.0.1",
+    "express-rate-limit": "^8.5.2",
     "openai": "^4.77.0",
     "pg": "^8.13.1",
     "pino": "^9.5.0",

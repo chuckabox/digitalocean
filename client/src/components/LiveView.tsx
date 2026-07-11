@@ -194,7 +194,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
             )}
             
             {videoSource === 'camera' && (
-              <Button variant="outline" className="flex-1 text-alert border-alert/20 hover:bg-alert/10" onClick={handleStopCamera}>
+              <Button variant="default" className="flex-1 text-alert border-alert/20 hover:bg-alert/10" onClick={handleStopCamera}>
                 Stop Camera
               </Button>
             )}

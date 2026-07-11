@@ -41,6 +41,7 @@ that's the point. Show *capability* ("the machine reads and reasons"), never cla
 
 - **[STATUS.md](./STATUS.md)** — team SoT: phase status, locked decisions, owners. **Read first.**
 - **[docs/backend-plan.md](./docs/backend-plan.md)** — production backend plan (phases, stack, on-disk tree).
+- **[docs/phase-4.md](./docs/phase-4.md)** — Phase 4 harden + deploy implementation guide (next).
 - **[BUILD_PLAN.md](./BUILD_PLAN.md)** — day schedule + demo script (paths/contract superseded by backend-plan).
 - **[docs/vision.md](./docs/vision.md)** — the public product vision (neurodivergent framing).
 - **[docs/north-star.md](./docs/north-star.md)** — the real vision: machine perception of people.
@@ -63,11 +64,9 @@ the LLM and Postgres live behind the server. Full phased plan:
 > The old `debrief/` Python backend was a throwaway test and has been removed. We build
 > the real backend from first principles — do not reference its contract.
 
-**Build status (2026-07-12):** Phase 0 (foundation + DO spike) ✅ · Phase 1 (data layer:
-Drizzle `sessions`/`frames`, typed repos, integration tests) ✅ · Phase 2 (Gradient client:
-`chat` / `stream` / `structured`, unit + live DO tests) ✅ · Phase 3 (`/v1` endpoints +
-services + `shared/contracts`, canned fallbacks) ✅. **Next: Phase 4** (deploy). Team status:
-[STATUS.md](./STATUS.md).
+**Build status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4
+code ✅ (rate limit, static SPA, Dockerfile, `.do/app.yaml`, CI). **App Platform live URL
+pending** — see [docs/phase-4.md](./docs/phase-4.md). Team status: [STATUS.md](./STATUS.md).
 
 ```
 ┌── Browser · React + MediaPipe (raw video/audio never leaves) ───────┐
@@ -89,11 +88,10 @@ lives (Drizzle) → clients wrap DO Gradient (`chat` / `stream` / `structured`).
 `shared/` holds the Zod schemas + inferred types = the wire contract client and server
 agree on.
 
-**What exists today (Phases 0–3):** env + Pino + `AppError` + CORS + `/health` + `/ready`;
-Drizzle repos for `sessions`/`frames`; Gradient client; `shared/contracts` + services
-(metrics / nudge / debrief) + `/v1` routes (sessions, frames, nudge, SSE debrief).
-**Not yet (Phase 4):** rate limiting, Dockerfile serving the client build, App Platform deploy.
-Progress/history API deferred.
+**What exists today (Phases 0–4 code):** env + Pino + `AppError` + CORS + rate limits +
+`/health` + `/ready`; Drizzle repos; Gradient client; `shared/contracts` + services + `/v1`;
+static SPA serve (`CLIENT_DIST`); root `Dockerfile` + migrate entrypoint; `.do/app.yaml`;
+GitHub CI. **Pending:** App Platform app creation + live URL. Progress/history API deferred.
 
 ### Gradient client surface (`server/src/clients/gradient.ts`)
 
@@ -108,45 +106,36 @@ Models (env): `MODEL_FAST` = `anthropic-claude-haiku-4.5`, `MODEL_SMART` = `anth
 
 ## File structure
 
-### Current (as of Phase 3) — what is on disk
+### Current (as of Phase 4) — what is on disk
 
 ```
 wavelength/
 ├── package.json              # npm workspaces: ["client","server","shared"]
+├── Dockerfile · .dockerignore · .do/app.yaml
+├── .github/workflows/ci.yml
 ├── AGENTS.md · STATUS.md · README.md · BUILD_PLAN.md · docs/
 │
-├── client/                   # React app (Vite) — perception stays client-side
-│   └── …                     # not yet wired to /v1 API
-│
-├── shared/src/               # wire contract
-│   ├── domain/signals.ts     # SignalFrame, Confidence
-│   └── contracts/            # session · frames · nudge · debrief
-│
-└── server/                   # Node 20 + Express 5 + Drizzle (TypeScript, strict)
-    ├── package.json · tsconfig.json · drizzle.config.ts
+├── client/                   # React app (Vite) — not yet wired to /v1
+├── shared/                   # domain + contracts (build → dist/)
+└── server/
+    ├── docker-entrypoint.sh  # migrate → node dist/index.js
     └── src/
-        ├── index.ts · app.ts · spike.ts · logger.ts · errors.ts
-        ├── config/env.ts
-        ├── http/
-        │   ├── middleware/   # requestId · errorHandler · cors
-        │   ├── parse.ts · mappers.ts
-        │   └── routes/       # health · sessions · frames · nudge · debrief
-        ├── services/         # metrics · nudge · debrief · fallbacks
-        ├── repositories/     # sessions · frames
-        ├── db/               # schema · client · migrate · migrations/
-        └── clients/gradient.ts
+        ├── http/middleware/  # requestId · errorHandler · cors · rateLimit
+        ├── http/static.ts    # CLIENT_DIST SPA
+        ├── http/routes/      # health · sessions · frames · nudge · debrief
+        ├── services/ · repositories/ · db/ · clients/gradient.ts
+        └── …
 ```
 
-**HTTP:** `GET /health`, `GET /ready`, plus `/v1/sessions`, `/v1/frames`, `/v1/nudge`,
-`/v1/debrief` (SSE). **Commands:**
-`npm run spike -w server` · `npm run db:migrate -w server` · `npm test -w server` ·
-`npm run test:integration -w server`.
+**HTTP:** `/health`, `/ready`, `/v1/*`, plus static SPA when `CLIENT_DIST` is set.
+**Deploy:** push `main` → App Platform (after app created from `.do/app.yaml`). Guide:
+[docs/phase-4.md](./docs/phase-4.md).
 
-### Target (Phase 4+) — still to build
+### Still open after Phase 4
 
 ```
-server/src/http/middleware/rateLimit.ts
-server/Dockerfile                # App Platform; serve client build
+# App Platform live URL + secrets in DO console
+# Peter: client → /v1 wiring
 # optional: GET /v1/progress
 ```
 

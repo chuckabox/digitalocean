@@ -23,9 +23,10 @@ the earlier throwaway test backend.
   — those are pre-pivot / obsolete.
 
 ## TL;DR
-**Phases 0–3 done and verified** (foundation, data layer, Gradient client, `/v1` endpoints).
-**Phase 4 next:** harden + deploy (Dockerfile, App Platform, rate limit, serve client build).
-Frontend (`client/`) still needs wiring to `/v1` — that's the critical path for E2E.
+**Phases 0–4 code done** (through harden + Docker + CI + App Platform spec).
+**Remaining:** create the App Platform app from [`.do/app.yaml`](./.do/app.yaml), set
+secrets, paste the live URL here. Guide: [docs/phase-4.md](./docs/phase-4.md).
+Frontend (`client/`) still needs wiring to `/v1` for E2E demo.
 
 ## Backend status (new `server/`)
 - **Phase 0 — foundation + spike: DONE.** Zod-validated env, Pino logging, typed errors,
@@ -53,10 +54,14 @@ Frontend (`client/`) still needs wiring to `/v1` — that's the critical path fo
   | `POST` | `/v1/nudge` | `structured` + canned fallback |
   | `POST` | `/v1/debrief` | SSE via `stream` + canned fallback |
   Progress/history deferred (cuttable). Hermetic unit tests cover metrics, fallbacks, route validation.
-- **Phase 4 — deploy: pending.**
+- **Phase 4 — harden + deploy artifacts: DONE (code).** Rate limit on `/v1` (stricter on
+  nudge/debrief); Express serves `CLIENT_DIST` SPA; root `Dockerfile` + entrypoint migrate;
+  `.do/app.yaml`; GitHub Actions CI. **Live App Platform URL: pending** — create app from
+  `.do/app.yaml`, set `DIGITAL_OCEAN_MODEL_ACCESS_KEY` + `DATABASE_URL` + `CORS_ORIGIN`, then
+  paste URL here. See [docs/phase-4.md](./docs/phase-4.md).
 - **Models:** `anthropic-claude-haiku-4.5` (fast) and `anthropic-claude-4.6-sonnet` (sharper).
-- **Commands:** `npm run spike -w server` · `npm run db:migrate -w server` · `npm test -w server`
-  · `npm run test:integration -w server`.
+- **Commands:** `npm run spike -w server` · `npm run db:migrate -w server` · `npm test`
+  · `npm run test:integration -w server` · `npm run build` (shared+client+server).
 
 ## Decisions LOCKED (don't reopen)
 1. **Name: Wavelength.**
@@ -79,7 +84,7 @@ Frontend (`client/`) still needs wiring to `/v1` — that's the critical path fo
 5. **Demo roles:** narrator, laptop driver, two skit actors (BUILD_PLAN §6).
 
 ## What's LEFT, by owner
-- **Dinil:** backend Phase 4 (deploy), then the client-side LIVE MediaPipe loop against `/v1`.
+- **Dinil:** create App Platform app from `.do/app.yaml` + secrets; then MediaPipe LIVE loop against `/v1`.
 - **Peter:** wire `client/` to the new `/v1` API. Keep `sessions.ts` as offline fallback.
 - **Connor:** coordinate teardown of the old app; own pitch/demo.
 - **All:** two timed skit rehearsals; record a backup demo video (we currently have no working

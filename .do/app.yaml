@@ -1,0 +1,45 @@
+name: wavelength
+region: nyc
+
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    github:
+      repo: chuckabox/digitalocean
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: CLIENT_DIST
+        value: /app/client/dist
+      - key: MIGRATIONS_DIR
+        value: /app/server/migrations
+      - key: CORS_ORIGIN
+        scope: RUN_TIME
+        type: GENERAL
+        value: "http://localhost:5173"
+      - key: DIGITAL_OCEAN_MODEL_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: DO_INFERENCE_BASE_URL
+        value: https://inference.do-ai.run/v1
+      - key: MODEL_FAST
+        value: anthropic-claude-haiku-4.5
+      - key: MODEL_SMART
+        value: anthropic-claude-4.6-sonnet
