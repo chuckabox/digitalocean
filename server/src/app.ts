@@ -6,6 +6,10 @@ import { requestId } from './http/middleware/requestId.js';
 import { corsMiddleware } from './http/middleware/cors.js';
 import { errorHandler } from './http/middleware/errorHandler.js';
 import { healthRouter } from './http/routes/health.js';
+import { sessionsRouter } from './http/routes/sessions.js';
+import { framesRouter } from './http/routes/frames.js';
+import { nudgeRouter } from './http/routes/nudge.js';
+import { debriefRouter } from './http/routes/debrief.js';
 
 /** Assemble the Express app. Kept pure (no listen) so tests can drive it directly. */
 export function createApp(): Express {
@@ -17,8 +21,14 @@ export function createApp(): Express {
   app.use(corsMiddleware);
   app.use(express.json({ limit: '1mb' }));
 
-  // Liveness/readiness at the root; domain routes mount under /v1 in Phase 3.
   app.use('/', healthRouter);
+
+  const v1 = express.Router();
+  v1.use(sessionsRouter);
+  v1.use(framesRouter);
+  v1.use(nudgeRouter);
+  v1.use(debriefRouter);
+  app.use('/v1', v1);
 
   // Unmatched route -> 404 through the error envelope.
   app.use((_req, _res, next) => next(AppError.notFound()));

@@ -1,6 +1,15 @@
 # Team Alignment - DECISIONS LOCKED
 
-> **Resolved by Connor.** Kept for context; the analysis below is what the decisions were based on.
+> **OBSOLETE (2026-07-12).** Pre-pivot alignment. Several "locked" items here contradict the
+> current decisions (e.g. live nudges IN; Express/TS backend; `debrief/` removed).
+>
+> Current SoT: [STATUS.md](../STATUS.md) · [docs/backend-plan.md](./backend-plan.md) ·
+> [AGENTS.md](../AGENTS.md).
+
+---
+
+> **Resolved by Connor.** Kept for historical context; the analysis below is what the
+> *earlier* decisions were based on.
 >
 > 1. **Name: Wavelength** — everywhere. Peter: rename CueReader; Dinil: update README.
 > 2. **Live nudges: roadmap/vision, not in the 24h build.** The debrief is the core and the demo.

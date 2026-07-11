@@ -1,5 +1,11 @@
 # Wavelength — Demo Runsheet
 
+> **OBSOLETE (2026-07-12).** Venue checklist still references the removed Python `debrief/`
+> backend and the defunct `wavelength-brain` URL. Rewrite against the new Express stack once
+> Phase 3 `/v1` + deploy land. Current SoT: [STATUS.md](../STATUS.md).
+
+---
+
 > Who does what on stage, in what order, and what we fall back to when something breaks.
 > Pairs with `pitch-script.md` (the words). This is the operations side.
 

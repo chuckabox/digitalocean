@@ -3,11 +3,14 @@
 > Building the **real** backend from first principles. The old `debrief/` Python service
 > was a throwaway test and has been removed — do not reference its contract. This plan is
 > the source of truth for backend work.
+>
+> **Status (2026-07-12):** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅. **Next: Phase 4**
+> (harden + deploy). Live team status: [STATUS.md](../STATUS.md).
 
 ## Decisions (locked)
 
-- **Monorepo:** `server/` (Node/Express, TypeScript) + `shared/` (Zod contract). React
-  app stays at repo root for now.
+- **Monorepo:** `client/` (React/Vite) + `server/` (Node/Express, TypeScript) + `shared/`
+  (Zod contract). npm workspaces: `["client","server","shared"]`.
 - **One deployable:** the Express service serves the client build *and* owns all
   DigitalOcean access. The inference key never reaches the browser.
 - **Perception is client-side** (MediaPipe) — only derived signal features + transcript
@@ -46,37 +49,88 @@ shared/ : zod schemas + inferred types = the contract client & server agree on
 locked (not `*`), request IDs in logs, no secrets in logs, timeouts + retries on every
 outbound DO call, and a graceful fallback when inference fails.
 
+**Today (Phases 0–3):** repositories + Gradient client + services + `/v1` routes
+(sessions, frames, nudge, SSE debrief). Progress/history deferred. Phase 4: rate limit,
+Dockerfile, App Platform.
+
+## What exists on disk (Phases 0–3)
+
+```
+shared/src/
+├── domain/signals.ts
+└── contracts/           # session · frames · nudge · debrief
+
+server/src/
+├── index.ts · app.ts · spike.ts · logger.ts · errors.ts
+├── config/env.ts
+├── http/middleware/     # requestId · errorHandler · cors
+├── http/routes/         # health · sessions · frames · nudge · debrief
+├── services/            # metrics · nudge · debrief · fallbacks
+├── repositories/        # sessions · frames
+├── db/
+└── clients/gradient.ts
+```
+
+**Env (see `config/env.ts`):** `DIGITAL_OCEAN_MODEL_ACCESS_KEY`, `DO_INFERENCE_BASE_URL`,
+`MODEL_FAST` / `MODEL_SMART`, `DATABASE_URL`, `CORS_ORIGIN`, `PORT` (default 8080).
+
+**Commands:** `npm run spike -w server` · `npm run db:migrate -w server` ·
+`npm test -w server` · `npm run test:integration -w server`.
+
 ## Phases
 
 Each phase ends green and is independently testable.
 
-### Phase 0 — Foundation + spike ⟵ the de-risking gate
+### Phase 0 — Foundation + spike ✅ DONE
 - Scaffold `server/` + `shared/`: TS strict, Express, Pino, Zod, Drizzle, Vitest,
-  Dockerfile, Zod-validated env, `/health` + `/ready`.
+  Zod-validated env, `/health` + `/ready`.
 - **SPIKE (before any domain code), with the real DO key:**
   1. `GET /v1/models` — confirm the exact model-name strings (do not trust docs/memory).
   2. One chat completion succeeds.
   3. One **forced tool-call** returns schema-valid JSON (this is our structured-output path).
   4. Postgres connects; a trivial migration applies.
 - **Gate:** if any of these behave differently than assumed, we adjust the plan now.
+- **Verified:** 74 models; Haiku + Sonnet IDs locked; tool-calling works; Postgres 16.14.
 
-### Phase 1 — Data layer
-- Drizzle schema + migrations: `sessions`, `frames`, `moments` (pgvector optional/stretch).
-- Repositories with typed queries; integration-tested against a real Postgres.
+### Phase 1 — Data layer ✅ DONE
+- Drizzle schema + migrations: **`sessions`, `frames` shipped.**
+  (`moments` / pgvector were optional stretch — **not implemented**.)
+- Repositories with typed queries; integration-tested against live Managed Postgres.
+- Tables: `sessions` (id, created_at, ended_at, context); `frames` (session_id, t,
+  engagement/valence/attention, signals jsonb, confidence, index on `(session_id, t)`).
 
-### Phase 2 — Gradient client
-- Typed wrapper: `chat()`, `stream()` (SSE), `structured(schema)` = forced tool-call +
-  Zod-validate + one repair retry. Model registry, timeouts, retries, canned fallback.
+### Phase 2 — Gradient client ✅ DONE
+Typed wrapper in `server/src/clients/gradient.ts` (the one place the app talks to an LLM).
+OpenAI SDK → `DO_INFERENCE_BASE_URL`; SDK `maxRetries: 2`, default timeout 30s.
 
-### Phase 3 — Domain services + endpoints (fresh `/v1` contract)
-- Design the API cleanly from scratch (not the old one): signal-frame ingestion, live
-  nudge phrasing, end-of-session debrief (streamed), progress/history.
-- Metrics computed **in code** (deterministic, unit-tested); the LLM only phrases/reasons
-  over grounded facts. Zod-validated boundaries, shared types, central error handling.
+| Export | Behavior |
+|---|---|
+| `chat(opts)` | Non-streaming completion → assistant text. Default tier `fast`, `maxTokens` 512. |
+| `stream(opts)` | Async generator of text deltas (debrief SSE). Default tier `smart`, `maxTokens` 1024. |
+| `structured(schema, opts)` | Forced `tool_choice` + Zod parse; `maxAttempts` default 2 (1 try + 1 repair). Default tier `fast`, `maxTokens` 800. Uses `zod-to-json-schema` (`openApi3`, no `$ref`). |
+| `extractValidJson(schema, attempt, maxAttempts)` | Repair-loop helper — unit-tested without the network. |
+| `listModels()` | Returns model id strings from DO. |
 
-### Phase 4 — Hardening + deploy
-- Locked CORS, rate limiting, structured request logs, finalized Dockerfile, DO App
-  Platform spec, CI (typecheck + tests, migrate on release), end-to-end integration pass.
+**Options:** `tier?: 'fast' \| 'smart'`, `system?`, `prompt?`, `messages?`, `maxTokens?`,
+`temperature?`, `timeoutMs?`. Per-request options are **omitted** when `timeoutMs` is unset
+(passing `{ timeout: undefined }` makes the SDK reject).
+
+**Verified:** hermetic unit tests (repair: valid-first-try, schema-repair, malformed-JSON,
+exhaustion→throw) + live integration (`chat`, `structured`, `stream`, `listModels`).
+
+**Still Phase 3/4:** canned inference fallbacks at the service layer (not exported from the client).
+
+### Phase 3 — Domain services + endpoints (fresh `/v1` contract) ✅ DONE
+- Shared contracts wired (`server` depends on `shared`).
+- Services: `metrics` (deterministic), `nudge` (`structured` + canned fallback),
+  `debrief` (`stream` → SSE + canned fallback).
+- Routes under `/v1`: sessions, frames, nudge, debrief. Progress/history **deferred**.
+- Hermetic tests: metrics, nudge/debrief fallbacks, route Zod validation + SSE.
+
+### Phase 4 — Hardening + deploy ← NEXT
+- Locked CORS (done), rate limiting, structured request logs (partial), finalized Dockerfile,
+  DO App Platform spec, CI (typecheck + tests, migrate on release), end-to-end integration
+  pass, serve client build from Express.
 
 ## Cut order under time pressure
 pgvector / semantic recall → progress/history → frame persistence. **Never cut** the

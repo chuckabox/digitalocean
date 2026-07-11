@@ -30,7 +30,7 @@
 ---
 
 **[2:25-3:00] Tech + why DigitalOcean (know the audience)**
-> Everything you just watched ran on DigitalOcean: the Python backend on App Platform, the reasoning on Gradient Inference — Claude Haiku — and every conversation lands in Managed Postgres, so Wavelength learns your recurring patterns. We compute the hard numbers locally so the coaching is grounded in facts, not vibes.
+> Everything you just watched ran on DigitalOcean: the Express/TypeScript backend on App Platform, the reasoning on Gradient Inference — Claude Haiku — and every conversation lands in Managed Postgres, so Wavelength learns your recurring patterns. We compute the hard numbers locally so the coaching is grounded in facts, not vibes.
 > *[Optional flex: Click the dropdown in the UI to swap the model live]* One dropdown, and the same debrief re-runs on Claude Sonnet — watch the reads get sharper. One key, any model. That's their platform doing the flexing. Wavelength turns every awkward conversation into the one lesson nobody gave you.
 
 ## Q&A prep (the questions judges will actually ask)

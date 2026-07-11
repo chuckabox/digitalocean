@@ -15,23 +15,45 @@ the earlier throwaway test backend.
 - The deployed app **`wavelength-brain-37j5z.ondigitalocean.app` is now defunct** (its tables
   are gone) and should be torn down.
 - **Consequence:** the old guaranteed-working fallback demo (`debrief/live-demo.html`) went with
-  it. We do not have a working end-to-end demo again until the new backend endpoints (Phase 3)
-  and the frontend are wired. Plan the fallback accordingly.
+  it. We do not have a working end-to-end demo again until the frontend is wired to the new
+  `/v1` endpoints (Phase 3 shipped; client wiring is next). Plan the fallback accordingly.
 - The new backend lives in **`server/`** (TypeScript/Express), the shared contract in
   **`shared/`** (Zod). Full plan: [docs/backend-plan.md](./docs/backend-plan.md).
+- **Do not follow** [docs/INTEGRATION.md](./docs/INTEGRATION.md) or [docs/ALIGNMENT.md](./docs/ALIGNMENT.md)
+  — those are pre-pivot / obsolete.
 
 ## TL;DR
-New production backend underway. **Phases 0–1 done and verified.** Frontend (`client/`) still
-needs wiring to the new API — that's the critical path once Phase 3 lands the endpoints.
+**Phases 0–3 done and verified** (foundation, data layer, Gradient client, `/v1` endpoints).
+**Phase 4 next:** harden + deploy (Dockerfile, App Platform, rate limit, serve client build).
+Frontend (`client/`) still needs wiring to `/v1` — that's the critical path for E2E.
 
 ## Backend status (new `server/`)
 - **Phase 0 — foundation + spike: DONE.** Zod-validated env, Pino logging, typed errors,
   CORS-locked, `/health` + `/ready`. Spike verified live on DO: 74 models (incl. the two below),
   chat completion, **forced tool-calling** (our structured-output path), Postgres 16.14 reachable.
-- **Phase 1 — data layer: DONE.** Drizzle schema (`sessions`, `frames`) migrated to Managed
-  Postgres; typed repositories; 5/5 integration tests green against the live DB.
-- **Phase 2 — Gradient client: NEXT.** Typed `chat` / SSE `stream` / `structured` (tool-call+repair).
-- **Phase 3 — endpoints (`/v1`), Phase 4 — deploy: pending.**
+- **Phase 1 — data layer: DONE.** Drizzle schema (`sessions`, `frames` only — no `moments`/pgvector)
+  migrated to Managed Postgres; typed repositories; integration tests green against the live DB.
+- **Phase 2 — Gradient client: DONE.** Typed wrapper in `server/src/clients/gradient.ts`:
+  - `chat()` — one-shot completions (default tier `fast`)
+  - `stream()` — async-generator text deltas for debrief SSE (default tier `smart`)
+  - `structured(zodSchema, …)` — forced tool-call → Zod validate → one repair retry (reliability core)
+  - `listModels()` — catalog probe
+  - Verified live against DO (integration) + hermetic unit tests for the repair loop
+  - Dep: `zod-to-json-schema`. Do **not** pass `{ timeout: undefined }` to the OpenAI SDK
+    (omit request options unless `timeoutMs` is set).
+- **Phase 3 — `/v1` endpoints: DONE.** Shared Zod contracts; services (metrics, nudge, debrief +
+  canned fallbacks); routes mounted under `/v1`:
+  | Method | Path | Notes |
+  |---|---|---|
+  | `POST` | `/v1/sessions` | start session |
+  | `GET` | `/v1/sessions/:id` | fetch one |
+  | `POST` | `/v1/sessions/:id/end` | mark ended |
+  | `POST` | `/v1/frames` | batch ingest |
+  | `GET` | `/v1/sessions/:id/frames` | timeline replay |
+  | `POST` | `/v1/nudge` | `structured` + canned fallback |
+  | `POST` | `/v1/debrief` | SSE via `stream` + canned fallback |
+  Progress/history deferred (cuttable). Hermetic unit tests cover metrics, fallbacks, route validation.
+- **Phase 4 — deploy: pending.**
 - **Models:** `anthropic-claude-haiku-4.5` (fast) and `anthropic-claude-4.6-sonnet` (sharper).
 - **Commands:** `npm run spike -w server` · `npm run db:migrate -w server` · `npm test -w server`
   · `npm run test:integration -w server`.
@@ -48,8 +70,7 @@ needs wiring to the new API — that's the critical path once Phase 3 lands the 
 7. **Persistence: DO Managed Postgres** — provisioned and working (was "stuck"; now live).
 
 ## Decisions we still need
-1. **Who wires `client/` → the new API, and by when?** Still THE critical path (blocked until
-   Phase 3 endpoints land, but assign the owner now).
+1. **Who wires `client/` → `/v1`, and by when?** Still THE critical path (API is ready).
 2. **LIVE loop ambition** (MediaPipe → signals → event engine) vs. debrief-only fallback. Dinil
    owns the loop.
 3. **Tear down the old `wavelength-brain` DO app?** It's defunct now. Recommend yes.
@@ -58,9 +79,8 @@ needs wiring to the new API — that's the critical path once Phase 3 lands the 
 5. **Demo roles:** narrator, laptop driver, two skit actors (BUILD_PLAN §6).
 
 ## What's LEFT, by owner
-- **Dinil:** backend Phases 2–4, then the client-side LIVE MediaPipe loop against the new endpoints.
-- **Peter:** wire `client/` to the new `/v1` API once Phase 3 lands it. Keep `sessions.ts` as
-  offline fallback.
+- **Dinil:** backend Phase 4 (deploy), then the client-side LIVE MediaPipe loop against `/v1`.
+- **Peter:** wire `client/` to the new `/v1` API. Keep `sessions.ts` as offline fallback.
 - **Connor:** coordinate teardown of the old app; own pitch/demo.
 - **All:** two timed skit rehearsals; record a backup demo video (we currently have no working
   end-to-end fallback — see the pivot note).

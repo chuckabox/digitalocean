@@ -18,7 +18,7 @@ One API key, one OpenAI-compatible endpoint (`https://inference.do-ai.run/v1/`) 
 | `anthropic-claude-haiku-4.5` | Anthropic | Text/Reasoning |
 | `openai-gpt-5.5` | OpenAI | Text |
 | `openai-o3` | OpenAI | Reasoning |
-| `llama3.3-70b-instruct` | Meta | Text |
+| `llama3.3-70b-instruct` | Meta | Text *(often 404 for our key — verify via `listModels`; Wavelength uses Haiku/Sonnet — see [STATUS.md](../STATUS.md))* |
 | `deepseek-3.2` | DeepSeek | Text |
 | `alibaba-qwen3-32b` | Alibaba | Text |
 | `openai-gpt-image-2` | OpenAI | Image (sync) |

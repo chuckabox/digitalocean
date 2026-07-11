@@ -3,6 +3,12 @@
 > A consented social co-pilot that reads the *trajectory* of a conversation — and suggests, never diagnoses.
 > One-day hackathon build plan. Team of 2–3. Hard code freeze at hour 6.5.
 > Product name: **Wavelength**.
+>
+> **Note (2026-07-12):** This file is still the day schedule + demo script. For **backend
+> status, stack, and API paths**, use [STATUS.md](./STATUS.md) and
+> [docs/backend-plan.md](./docs/backend-plan.md). The production contract is fresh **`/v1/*`**
+> on the Express/TS `server/` (Phases 0–3 done; Phase 4 next) — not the `/api/*` Python paths
+> mentioned below, and not the removed `debrief/` service.
 
 ---
 

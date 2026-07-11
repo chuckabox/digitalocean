@@ -3,7 +3,7 @@
 > Living context doc for our final idea. Everything the team needs for the build and the
 > 2-minute judge pitch goes here. Status: **name locked (Wavelength), mode locked
 > (CONSENT → LIVE → DEBRIEF), modality locked (audio core + video supporting layer).
-> Backend is deployed on DO (Python API), frontend is React.**
+> Backend is Express/TypeScript on DO App Platform; frontend is React (`client/`).**
 
 ## One-liner
 A consented social co-pilot for neurodivergent people who want to practice and get better at casual conversation. It reads the *trajectory* of a conversation from the webcam and suggests, never diagnoses: discreet hedged nudges live in the moment, plus an annotated timeline and AI debrief afterward.
@@ -49,7 +49,7 @@ Guardrails (self-advocacy community and social-good judges care about these):
 ## How it works (Architecture)
 1. **Client-Side Perception**: Browser uses `getUserMedia` + MediaPipe to extract facial landmarks (blendshapes) at 12Hz. Web Speech API captures transcript.
 2. **Derived Signals**: Pure JS calculates signals (smile, nod, gaze, engagement) mapped against a per-person baseline.
-3. **DO Backend (Python)**: The React app sends 1Hz signal frames to the DO-hosted Python API.
+3. **DO Backend (Express/TS)**: The React app sends 1Hz signal frames to the DO-hosted Express API.
 4. **Live Nudges**: A deterministic event engine watches for engagement drops, then hits DO Inference for a hedged nudge.
 5. **Debrief**: Post-conversation, DO Inference (Claude Haiku/Sonnet) generates a structured timeline and coaching debrief.
 6. **Longitudinal Memory (Best Use of Data)**: DO Managed Postgres stores all frames and debriefs to track user progress across multiple sessions.
@@ -58,7 +58,7 @@ Guardrails (self-advocacy community and social-good judges care about these):
 Every layer rides on their platform:
 - **DO Inference — reasoning model:** The nudge generation and the debrief analysis.
 - **DO Managed Postgres:** Longitudinal pattern memory / Best Use of Data.
-- **DO App Platform:** Python backend deployment and React serving.
+- **DO App Platform:** Express/TypeScript backend deployment and React serving.
 - **Multi-model flex (demo beat):** Live-swap the reasoning model (e.g. Haiku to Sonnet) and show the debrief get sharper. One line of code on their platform.
 
 ## Defensibility (read before pitching)
