@@ -27,12 +27,12 @@ export default function Header({ phase, onBrandClick, onEndSession, onKill, onPh
         </button>
 
         <div className="flex items-center gap-6">
-          {phase !== 'live' && phase !== 'consent' && onPhaseChange && (
+          {onPhaseChange && (
             <nav className="flex items-center gap-[26px]" aria-label="Main">
               <button
-                onClick={() => onPhaseChange('home')}
+                onClick={() => onPhaseChange('live')}
                 className={`font-sans text-[13px] tracking-[0.02em] pb-2 pt-0.5 border-none bg-transparent cursor-pointer ${
-                  phase === 'home' || phase === 'debrief'
+                  phase === 'live' || phase === 'debrief'
                     ? 'text-ink font-semibold shadow-[inset_0_-2px_0_0_var(--color-accent)]'
                     : 'text-ink-2 font-normal hover:text-ink'
                 } focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
