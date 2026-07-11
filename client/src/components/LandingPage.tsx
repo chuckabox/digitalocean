@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { DotLottiePlayer } from '@dotlottie/react-player'
 import { Button } from './ui/button'
-import PitchDeck from './PitchDeck'
 
 interface LandingPageProps {
   onEnterApp: () => void
@@ -23,8 +22,8 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <h1 className="font-sans text-[48px] md:text-[64px] tracking-tight leading-[1.05] font-medium text-ink mb-8 max-w-[12ch]">
             Understand the room.
           </h1>
-          <p className="font-sans text-[18px] text-ink-2 leading-relaxed max-w-[42ch] mb-10">
-            A consented co-pilot for people who struggle to read how someone else is feeling — built first for neurodivergent people. Suggests, never diagnoses.
+          <p className="font-sans text-[18px] text-ink-2 leading-relaxed max-w-[45ch] mb-10">
+            A consented social co-pilot that helps you read social cues during one-on-one conversations.
           </p>
           <Button variant="primary" size="lg" className="rounded-full px-8 font-medium" onClick={onEnterApp}>
             Start Session
@@ -47,10 +46,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       </section>
 
       {/* Core Features */}
-      <section className="w-[100vw] relative z-0 left-[50%] right-[50%] -mx-[50vw] bg-paper-2 py-24 px-7 overflow-hidden">
-        <div className="absolute inset-0 -z-10 pointer-events-none opacity-20 flex items-center justify-center" aria-hidden="true">
-          <DotLottiePlayer src="/anotherwave.lottie" autoplay loop style={{ width: '100%', height: '100%' }} />
-        </div>
+      <section className="w-[100vw] relative left-[50%] right-[50%] -mx-[50vw] bg-paper-2 py-24 px-7">
         <div className="max-w-[1160px] mx-auto">
           <h2 className="font-sans text-[28px] md:text-[32px] tracking-tight font-medium text-ink mb-16 text-center">
             Core features
@@ -58,20 +54,20 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {[
             {
-              title: 'Live Suggestions',
-              desc: 'Quiet, hedged nudges when how the conversation is landing seems to shift — private to you, easy to ignore.',
+              title: 'Live Nudges',
+              desc: 'Gentle suggestions delivered privately in the moment when meaningful shifts occur.',
             },
             {
               title: 'The Debrief',
-              desc: 'An annotated timeline and plain-language summary afterward: what happened, and what to try next time.',
+              desc: 'An annotated timeline and plain-language summary of the conversation afterward.',
             },
             {
               title: 'Privacy First',
-              desc: 'Analyzed locally. Raw video never leaves the laptop — only derived signals and transcript text reach the cloud.',
+              desc: 'Analyzed locally. Video and audio are never saved or transmitted to the cloud.',
             },
             {
               title: 'Two-Party Consent',
-              desc: 'Runs only when both people explicitly agree. Consent is visible, not fine print.',
+              desc: 'Complies with strict two-party consent laws like California. Operates only when both sides explicitly agree.',
             }
           ].map((feature, i) => (
             <motion.div
@@ -110,10 +106,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
               A translator, not a lie detector.
             </h2>
             <p className="font-sans text-[16px] text-ink-2 leading-relaxed max-w-[45ch]">
-              Built first for neurodivergent people who find it hard to read how someone else is feeling in the moment. The same idea helps when those cues aren’t easy to see — or get lost under social load.
-            </p>
-            <p className="font-sans text-[16px] text-ink-2 leading-relaxed max-w-[45ch] mt-4">
-              Like captions for the social channel: hedged suggestions with confidence, never a claim about what someone feels, and never a tool to “fix” anyone.
+              Wavelength does not judge inner states or fix people. It is built as an accommodation for neurodivergent individuals to help both sides of a conversation understand each other better.
             </p>
           </div>
         </motion.div>
@@ -127,9 +120,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { num: '01', title: 'Start Session', desc: 'Both people consent, then the camera opens. Perception runs on your laptop — raw video stays there.' },
-              { num: '02', title: 'Get Live Suggestions', desc: 'When something meaningful shifts, get a discreet, hedged nudge about how the conversation may be landing.' },
-              { num: '03', title: 'Review the Debrief', desc: 'Replay an annotated timeline and a plain-language summary — concrete feedback, not a diagnosis.' }
+              { num: '01', title: 'Start Session', desc: 'Secure mutual consent and start the camera. Analysis runs entirely locally on your device.' },
+              { num: '02', title: 'Get Live Nudges', desc: 'Receive discreet, gentle suggestions in the moment when meaningful shifts occur in the conversation.' },
+              { num: '03', title: 'Review the Debrief', desc: 'After the session, review an annotated timeline and a plain-language summary of how it went.' }
             ].map((step, i) => (
               <motion.div
                 key={step.num}
@@ -147,9 +140,6 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           </div>
         </div>
       </section>
-
-      {/* Pitch deck — judge-facing "how it actually works" */}
-      <PitchDeck />
 
       {/* Founders */}
       <section className="relative w-[100vw] left-[50%] right-[50%] -mx-[50vw] pt-24 pb-32 overflow-hidden">
