@@ -3,11 +3,13 @@ import { z } from 'zod';
 export const ConfidenceSchema = z.enum(['low', 'medium', 'high']);
 export type Confidence = z.infer<typeof ConfidenceSchema>;
 
-/** Experimental soft state distribution (sums ≈ 1). Not a clinical label. */
+/** Experimental soft emotion distribution (sums ≈ 1). Hedged probabilities, not a verdict. */
 export const EmotionProbsSchema = z.object({
   calm: z.number().min(0).max(1),
-  positive: z.number().min(0).max(1),
+  happy: z.number().min(0).max(1),
+  sad: z.number().min(0).max(1),
   tense: z.number().min(0).max(1),
+  surprised: z.number().min(0).max(1),
   uncertain: z.number().min(0).max(1),
 });
 export type EmotionProbs = z.infer<typeof EmotionProbsSchema>;

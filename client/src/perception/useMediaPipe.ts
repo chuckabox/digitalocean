@@ -236,8 +236,10 @@ export function useMediaPipe({
           signals: {
             ...frame.signals,
             emotionCalm: emotions.calm,
-            emotionPositive: emotions.positive,
+            emotionHappy: emotions.happy,
+            emotionSad: emotions.sad,
             emotionTense: emotions.tense,
+            emotionSurprised: emotions.surprised,
             emotionUncertain: emotions.uncertain,
             motionEnergy,
             ...(rp.bpm != null

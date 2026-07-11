@@ -63,6 +63,7 @@ export function useSyntheticLoop(
       );
       const emotions = estimateEmotion({
         smile,
+        frown: window.__wlDip ? 0.35 : 0.04,
         browRaise,
         browFurrow,
         eyeOpenness: 0.85,
@@ -86,8 +87,10 @@ export function useSyntheticLoop(
           arousal,
           motionEnergy,
           emotionCalm: emotions.calm,
-          emotionPositive: emotions.positive,
+          emotionHappy: emotions.happy,
+          emotionSad: emotions.sad,
           emotionTense: emotions.tense,
+          emotionSurprised: emotions.surprised,
           emotionUncertain: emotions.uncertain,
         },
         emotions,

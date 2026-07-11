@@ -23,6 +23,7 @@ export function deriveRawSignals(
   matrix: number[] | undefined,
 ): {
   smile: number;
+  frown: number;
   browRaise: number;
   browFurrow: number;
   eyeOpenness: number;
@@ -32,6 +33,7 @@ export function deriveRawSignals(
   pitch: number;
 } {
   const smile = avg(shapes['mouthSmileLeft'] ?? 0, shapes['mouthSmileRight'] ?? 0);
+  const frown = avg(shapes['mouthFrownLeft'] ?? 0, shapes['mouthFrownRight'] ?? 0);
   const browRaise =
     (shapes['browInnerUp'] ?? 0) +
     avg(shapes['browOuterUpLeft'] ?? 0, shapes['browOuterUpRight'] ?? 0);
@@ -47,7 +49,7 @@ export function deriveRawSignals(
   const gazeAwayHead = Math.abs(yaw) > 0.35 || Math.abs(pitch) > 0.28 ? 1 : 0;
   const gazeAway = Math.min(1, Math.max(gazeAwayHead, gazeFromEyes * 0.6));
 
-  return { smile, browRaise, browFurrow, eyeOpenness, gazeAway, jawOpen, yaw, pitch };
+  return { smile, frown, browRaise, browFurrow, eyeOpenness, gazeAway, jawOpen, yaw, pitch };
 }
 
 /** Extract approximate yaw/pitch (radians) from a column-major 4×4 matrix. */

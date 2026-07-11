@@ -314,8 +314,10 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
     return (
       [
         { label: 'calm', p: liveFrame.emotions.calm },
-        { label: 'positive', p: liveFrame.emotions.positive },
+        { label: 'happy', p: liveFrame.emotions.happy },
+        { label: 'sad', p: liveFrame.emotions.sad },
         { label: 'tense', p: liveFrame.emotions.tense },
+        { label: 'surprised', p: liveFrame.emotions.surprised },
         { label: 'uncertain', p: liveFrame.emotions.uncertain },
       ] as Array<{ label: string; p: number }>
     ).sort((a, b) => b.p - a.p);
@@ -584,7 +586,11 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
                       <BarTrack
                         width={pct(p)}
                         variant={
-                          label === 'tense' || label === 'uncertain' ? 'alert' : 'positive'
+                          label === 'happy' || label === 'calm'
+                            ? 'positive'
+                            : label === 'surprised'
+                              ? 'accent'
+                              : 'alert'
                         }
                       />
                       <span className="font-mono text-xs font-medium text-ink min-w-[36px] text-right">

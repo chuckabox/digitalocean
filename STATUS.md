@@ -74,7 +74,7 @@ Cursor user MCP (`~/.cursor/mcp.json`, not in git) mirrors Claude Code for this 
 4. **Stack: monorepo — `client/` (React/Vite) + `server/` (TS/Express) + `shared/` (Zod contract).**
    One deployable; the server holds the DO key and proxies inference; CORS locked (key never in
    the browser). *(Reverses the earlier "React calls a Python API, no Express proxy" decision.)*
-5. **Modality: audio core, video supporting** — never emotion labels (public framing).
+5. **Modality: audio core, video supporting** — soft emotion probs allowed (hedged; never diagnose).
 6. **Credits: fine.** $200 hackathon credit applied (expires Jul 14). Burn freely.
 7. **Persistence: DO Managed Postgres** — provisioned and working (was "stuck"; now live).
 

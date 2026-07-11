@@ -32,7 +32,7 @@ function isQuestion(text: string): boolean {
 
 /**
  * Compute grounded metrics from frames + transcript. Pure — no I/O.
- * Never labels emotions; only describes measurable signals and speech stats.
+ * Describes measurable signals and speech stats (emotion probs live on frames if present).
  */
 export function computeMetrics(
   frames: SignalFrame[],

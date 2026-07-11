@@ -38,7 +38,8 @@ that's the point. Show *capability* ("the machine reads and reasons"), never cla
 
 - **Runs entirely on DigitalOcean.** No other cloud.
 - **Must use Gradient AI Inference** — this is required to be eligible for prizes.
-- **Never label emotions.** Signal descriptors + hedged suggestions + confidence only.
+- **May label soft emotion probabilities** (calm / happy / sad / tense / surprised /
+  uncertain) from face cues — always as hedged relative probs, never as a diagnosis.
 - **Privacy by architecture:** raw video/audio never leaves the laptop; only derived
   signal features and transcript text reach the backend.
 
