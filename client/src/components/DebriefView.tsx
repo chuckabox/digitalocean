@@ -9,6 +9,7 @@ import {
   YAxis,
   ReferenceLine,
 } from 'recharts';
+import { analyzeSession } from 'shared';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useSession } from '@/session/SessionContext';
@@ -97,12 +98,26 @@ export default function DebriefView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const analysis = useMemo(
+    () => analyzeSession(frames, transcript),
+    [frames, transcript],
+  );
+
+  const hasArousal = useMemo(
+    () => frames.some((f) => typeof f.signals?.arousal === 'number'),
+    [frames],
+  );
+
   const chartData = useMemo(
     () =>
       frames.map((f) => ({
         t: f.t,
         engagement: Math.round((f.engagement ?? 0) * 100),
         attention: Math.round((f.attention ?? 0) * 100),
+        arousal:
+          typeof f.signals?.arousal === 'number'
+            ? Math.round(f.signals.arousal * 100)
+            : null,
       })),
     [frames],
   );
@@ -126,6 +141,37 @@ export default function DebriefView() {
           DigitalOcean Gradient.
         </p>
       </div>
+
+      {analysis.theTell ? (
+        <div className="border border-alert/40 bg-alert/5 rounded-[3px] p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-alert">
+              The Tell
+            </span>
+            <Badge variant="alert" size="sm">
+              t = {formatTime(analysis.theTell.t)}
+            </Badge>
+            <span className="font-mono text-[10px] text-ink-3 uppercase tracking-wide">
+              face vs body · experimental
+            </span>
+          </div>
+          <p className="text-[17px] leading-snug text-ink font-light">
+            The body moved while the face held steady — {analysis.theTell.bodyDesc}, while
+            the {analysis.theTell.faceDesc}.
+          </p>
+          <p className="font-mono text-[11px] text-ink-3 mt-2">
+            The clearest divergence between the voluntary channel (expression) and the
+            involuntary one (arousal). A signal worth noticing — not a verdict.
+          </p>
+        </div>
+      ) : (
+        hasArousal && (
+          <p className="font-mono text-xs text-ink-3">
+            No strong face/body divergence stood out this session — the two channels
+            largely tracked together.
+          </p>
+        )
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 items-start">
         <div className="flex flex-col gap-4">
@@ -157,19 +203,51 @@ export default function DebriefView() {
                     strokeWidth={1.5}
                     isAnimationActive={false}
                   />
+                  {hasArousal && (
+                    <Area
+                      type="monotone"
+                      dataKey="arousal"
+                      stroke="#B04A3C"
+                      fill="none"
+                      strokeWidth={1.25}
+                      strokeDasharray="2 2"
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  )}
+                  {analysis.theTell && (
+                    <ReferenceLine
+                      x={analysis.theTell.t}
+                      stroke="#B04A3C"
+                      strokeWidth={1.5}
+                      label={{ value: 'the tell', fill: '#B04A3C', fontSize: 10, position: 'top' }}
+                    />
+                  )}
                   {nudges.map((n) => (
                     <ReferenceLine
                       key={n.id}
                       x={n.t}
-                      stroke="#B04A3C"
+                      stroke="#A39D8E"
                       strokeDasharray="4 4"
-                      label={{ value: 'nudge', fill: '#B04A3C', fontSize: 10 }}
+                      label={{ value: 'nudge', fill: '#A39D8E', fontSize: 10 }}
                     />
                   ))}
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
+
+          {hasArousal && (
+            <div className="flex items-center gap-4 font-mono text-[10px] text-ink-3 -mt-1">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-4 h-[2px] bg-accent" /> engagement
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-4 h-0 border-t-[1.5px] border-dashed border-alert" />{' '}
+                arousal (rPPG · experimental)
+              </span>
+            </div>
+          )}
 
           <dl className="grid grid-cols-3 gap-3 text-sm">
             <div className="border border-rule p-3">
@@ -185,6 +263,40 @@ export default function DebriefView() {
               <dd className="font-mono text-ink">{nudges.length}</dd>
             </div>
           </dl>
+
+          {analysis.moments.length > 0 && (
+            <div>
+              <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-3 mb-2">
+                Moments the signals flagged
+              </p>
+              <ul className="flex flex-col border border-rule divide-y divide-rule">
+                {analysis.moments.map((m, i) => (
+                  <li key={`${m.t}-${m.channel}-${i}`} className="px-3 py-2.5 flex gap-3 items-start">
+                    <span className="font-mono text-xs text-ink-3 shrink-0 w-9">
+                      {formatTime(m.t)}
+                    </span>
+                    <span className="text-[13px] text-ink flex-1">
+                      <span className="capitalize">{m.channel}</span>{' '}
+                      {m.direction === 'rise' ? 'rose' : 'dropped'}{' '}
+                      {Math.round(m.before * 100)}
+                      {m.channel === 'valence' ? '' : '%'} →{' '}
+                      {Math.round(m.after * 100)}
+                      {m.channel === 'valence' ? '' : '%'}
+                      {m.coText && (
+                        <span className="text-ink-3">
+                          {' '}
+                          · “{m.coText.length > 60 ? m.coText.slice(0, 59) + '…' : m.coText}”
+                        </span>
+                      )}
+                    </span>
+                    <Badge variant={m.direction === 'fall' ? 'alert' : 'accent'} size="sm">
+                      {m.direction}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {nudges.length > 0 && (
             <ul className="flex flex-col border border-rule divide-y divide-rule">

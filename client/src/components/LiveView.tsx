@@ -351,7 +351,7 @@ export default function LiveView({ onGoToTimeline }: LiveViewProps) {
         <div>
           <h2 className="text-[26px] font-light tracking-tight leading-[1.25]">Live session</h2>
           <p className="font-mono text-xs text-ink-3 mt-1">
-            {sourceLabel} · press B to dip (synthetic) · video stays on device
+            {sourceLabel} · B = dip · N = masked arousal (synthetic) · video stays on device
           </p>
           {mpError && (
             <p className="text-xs text-alert mt-1" role="alert">

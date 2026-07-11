@@ -93,23 +93,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const startSession = useCallback(async () => {
     setStarting(true);
     setStartError(null);
+    let id: string;
     try {
-      const session = await sessionsApi.createSession({
-        context: context.trim() || undefined,
-      });
-      setSessionId(session.id);
-      setFrames([]);
-      setTranscript([]);
-      setNudges([]);
-      setStartedAtMs(Date.now());
-      setPhase('live');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not start session';
-      setStartError(message);
-      throw err;
+      const session = await Promise.race([
+        sessionsApi.createSession({ context: context.trim() || undefined }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('session start timed out')), 2500),
+        ),
+      ]);
+      id = session.id;
+    } catch {
+      // Offline / backend-down fallback: run the session locally so perception,
+      // nudges (canned) and the debrief (client-computed) all still work. The
+      // demo never dies on wifi — only the AI phrasing degrades gracefully.
+      id = crypto.randomUUID();
+      setStartError('Offline mode — running locally (AI phrasing may be limited)');
     } finally {
       setStarting(false);
     }
+    setSessionId(id);
+    setFrames([]);
+    setTranscript([]);
+    setNudges([]);
+    setStartedAtMs(Date.now());
+    setPhase('live');
   }, [context]);
 
   const endAndDebrief = useCallback(async () => {

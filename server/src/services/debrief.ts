@@ -1,4 +1,4 @@
-import type { DebriefInput, DebriefRequest, SignalFrame } from 'shared';
+import { analyzeSession, type DebriefInput, type DebriefRequest, type SignalFrame } from 'shared';
 import { stream, type ModelTier } from '../clients/gradient.js';
 import { AppError } from '../errors.js';
 import { getFrames } from '../repositories/frames.js';
@@ -9,17 +9,29 @@ function normalizeDebriefRequest(req: DebriefRequest): DebriefInput {
   return { ...req, transcript: req.transcript ?? [] };
 }
 
-const DEBRIEF_SYSTEM = `You write post-conversation debriefs for Wavelength, a consented social co-pilot.
+const DEBRIEF_SYSTEM = `You write post-conversation debriefs for Wavelength, a consented social co-pilot
+that reads two channels: the *face* (voluntary, observable expression) and the *body*
+(involuntary arousal — heart rate estimated from the webcam via rPPG, experimental).
+
 Rules:
-- Warm, direct, kind. Suggest never diagnose.
-- Never label emotions (no happy/sad/angry/anxious/etc.). Stick to observable signals and speech stats.
-- Hedge interpretations ("may", "might", "could", "often means").
-- Structure:
-  1) 2–3 sentences on what seemed to go okay
-  2) 2–3 timestamped moments grounded ONLY in the provided facts (cite t=…s)
-  3) 1–2 concrete things to try next time
-- Do not invent timestamps or metrics that are not in the facts.
-- Plain prose paragraphs; no JSON; no bullet-only dumps unless brief lists help clarity.`;
+- Warm, direct, specific, kind. Suggest, never diagnose.
+- Never label emotions (no happy/sad/angry/anxious/nervous/etc.). Describe observable
+  SIGNAL SHIFTS and their timing only — engagement, attention, arousal, heart rate,
+  face/body divergence, talk balance.
+- Hedge interpretations ("may", "might", "could", "one reading is").
+- Treat the "body" (arousal / heart rate) reads as EXPERIMENTAL and confidence-limited.
+  Never claim they reveal a hidden truth or that someone is lying — only that a signal moved.
+- Ground every claim in the provided facts. NEVER invent a timestamp, number, or quote.
+
+Structure (prose, not a JSON dump):
+1) THE HEADLINE — if a face/body divergence ("The Tell") is provided, lead with it: the
+   single most interesting moment where the body moved but the face stayed steady. Name the
+   time and what each channel did. If there is no Tell, lead with the clearest engagement shift.
+2) 2–3 EVENT-ANCHORED beats — each tied to a specific t=…s moment from the facts, and where
+   a transcript line is given, connect the shift to what was said ("right after you said …").
+3) 1–2 concrete, kind things to try next time, tied to a specific moment.
+
+Keep it tight (~180–240 words). Cite t=…s. No headings-as-labels; flowing paragraphs.`;
 
 function framesFromRows(
   rows: Array<{
@@ -50,10 +62,14 @@ async function resolveFrames(req: DebriefRequest): Promise<SignalFrame[]> {
   return [];
 }
 
-function buildPrompt(req: DebriefInput, factLines: string[]): string {
+function buildPrompt(req: DebriefInput, factLines: string[], tellLine: string | null): string {
   const parts: string[] = [];
   if (req.context) parts.push(`Session context: ${req.context}`);
-  parts.push('Grounded facts (computed in code — treat as true):');
+  if (tellLine) {
+    parts.push('THE TELL (lead with this — the biggest face/body divergence):');
+    parts.push(`- ${tellLine}`);
+  }
+  parts.push('Grounded facts (computed in code — treat as true; do not add any others):');
   parts.push(...factLines.map((l) => `- ${l}`));
 
   if (req.transcript.length > 0) {
@@ -79,8 +95,14 @@ export async function* streamDebrief(raw: DebriefRequest): AsyncGenerator<string
   const req = normalizeDebriefRequest(raw);
   const frames = await resolveFrames(req);
   const metrics = computeMetrics(frames, req.transcript);
+  const analysis = analyzeSession(frames, req.transcript);
   const tier: ModelTier = req.tier ?? 'smart';
-  const prompt = buildPrompt(req, metrics.factLines);
+  // Event-based facts (moments, arousal, The Tell) lead; speech-stat facts fill in.
+  const factLines = [...analysis.factLines, ...metrics.factLines];
+  const tellLine = analysis.theTell
+    ? `Near t=${analysis.theTell.t}s, ${analysis.theTell.bodyDesc}, while the ${analysis.theTell.faceDesc}.`
+    : null;
+  const prompt = buildPrompt(req, factLines, tellLine);
 
   try {
     for await (const delta of stream({
