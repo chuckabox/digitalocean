@@ -5,9 +5,6 @@ you discreet, gentle nudges in the moment and an annotated debrief afterward. We
 neurodivergent people who find it hard to read how someone else is feeling during a live
 conversation. It suggests, it never diagnoses, and every read comes with a confidence level.
 
-> Winner of Best UI/UX at **AI for Social Good: Hack with MLH & DigitalOcean**, held in San
-> Francisco on July 10 to 11, 2026. Built in a day, judged against 30 teams.
-
 **Live:** https://wavelength-wxut4.ondigitalocean.app
 
 ## What it does
